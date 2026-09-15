@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EntrenamientoRouteImport } from './routes/entrenamiento'
+import { Route as MapaRouteImport } from './routes/mapa'
+import { Route as TesoroRouteImport } from './routes/tesoro'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EntrenamientoRoute = EntrenamientoRouteImport.update({
+  id: '/entrenamiento',
+  path: '/entrenamiento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapaRoute = MapaRouteImport.update({
+  id: '/mapa',
+  path: '/mapa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TesoroRoute = TesoroRouteImport.update({
+  id: '/tesoro',
+  path: '/tesoro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/entrenamiento': typeof EntrenamientoRoute
+  '/mapa': typeof MapaRoute
+  '/tesoro': typeof TesoroRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/entrenamiento': typeof EntrenamientoRoute
+  '/mapa': typeof MapaRoute
+  '/tesoro': typeof TesoroRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/entrenamiento': typeof EntrenamientoRoute
+  '/mapa': typeof MapaRoute
+  '/tesoro': typeof TesoroRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/entrenamiento' | '/mapa' | '/tesoro'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/entrenamiento' | '/mapa' | '/tesoro'
+  id: '__root__' | '/' | '/entrenamiento' | '/mapa' | '/tesoro'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EntrenamientoRoute: typeof EntrenamientoRoute
+  MapaRoute: typeof MapaRoute
+  TesoroRoute: typeof TesoroRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/entrenamiento': {
+      id: '/entrenamiento'
+      path: '/entrenamiento'
+      fullPath: '/entrenamiento'
+      preLoaderRoute: typeof EntrenamientoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mapa': {
+      id: '/mapa'
+      path: '/mapa'
+      fullPath: '/mapa'
+      preLoaderRoute: typeof MapaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tesoro': {
+      id: '/tesoro'
+      path: '/tesoro'
+      fullPath: '/tesoro'
+      preLoaderRoute: typeof TesoroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EntrenamientoRoute: EntrenamientoRoute,
+  MapaRoute: MapaRoute,
+  TesoroRoute: TesoroRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
