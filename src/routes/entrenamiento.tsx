@@ -322,7 +322,7 @@ const STORIES = [
 function Reading({ onWin }: { onWin: () => void }) {
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<"idle" | "ok" | "fail">("idle");
-  const story = useMemo(() => STORIES[index % STORIES.length], [index]);
+  const story = useMemo(() => STORIES[index % STORIES.length]!, [index]);
 
   function respond(value: boolean) {
     if (status !== "idle") return;
