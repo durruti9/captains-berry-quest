@@ -1,175 +1,204 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Sunrise, Sun, Moon, Sparkles } from "lucide-react";
-import { PirateShell } from "@/components/PirateShell";
-import { useCaptain, TASK_REWARD } from "@/lib/captain-store";
+import { Anchor, Crown, Lock } from "lucide-react";
+import { useCaptain } from "@/lib/captain-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mi Barco — El Diario del Capitán" },
+      { title: "Perfiles — El Diario del Capitán" },
       {
         name: "description",
         content:
-          "Rutinas diarias de mañana, tarde y noche para jóvenes piratas. Completa tareas y gana Berries.",
+          "Elige tu perfil pirata: entra como Grumete a tus tareas o como Rey Pirata al panel de control.",
       },
-      { property: "og:title", content: "Mi Barco — El Diario del Capitán" },
+      { property: "og:title", content: "Perfiles — El Diario del Capitán" },
       {
         property: "og:description",
-        content: "Completa tus tareas de pirata y gana Berries para tu tiempo de juego.",
+        content: "Selección de perfiles de la tripulación y acceso del Rey Pirata.",
       },
     ],
   }),
-  component: MiBarco,
+  component: Inicio,
 });
 
-const BLOCKS = [
-  {
-    id: "manana",
-    title: "Mañana",
-    icon: Sunrise,
-    tone: "bg-gold text-gold-foreground",
-    tasks: [
-      { id: "cama", label: "Hacer la cama", emoji: "🛏️" },
-      { id: "dientes-m", label: "Lavarse los dientes", emoji: "🪥" },
-      { id: "vestir", label: "Vestirse solo", emoji: "👕" },
-      { id: "mochila", label: "Mochila lista", emoji: "🎒" },
-    ],
-  },
-  {
-    id: "tarde",
-    title: "Tarde",
-    icon: Sun,
-    tone: "bg-coral text-coral-foreground",
-    tasks: [
-      { id: "deberes", label: "Hacer los deberes", emoji: "📚" },
-      { id: "merienda", label: "Recoger la merienda", emoji: "🍎" },
-      { id: "juguetes", label: "Ordenar los juguetes", emoji: "🧸" },
-    ],
-  },
-  {
-    id: "noche",
-    title: "Noche",
-    icon: Moon,
-    tone: "bg-sea text-sea-foreground",
-    tasks: [
-      { id: "ducha", label: "Ducha de marinero", emoji: "🚿" },
-      { id: "dientes-n", label: "Lavarse los dientes", emoji: "🦷" },
-      { id: "ropa", label: "Ropa de mañana preparada", emoji: "🧺" },
-      { id: "lectura", label: "Leer un poquito", emoji: "📖" },
-    ],
-  },
-] as const;
+function Inicio() {
+  const { ready, admin, kids, createAdmin, loginAdmin, enterKid } = useCaptain();
+  const navigate = useNavigate();
+  const [user, setUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [askingAdmin, setAskingAdmin] = useState(false);
 
-function MiBarco() {
-  const { state, toggleTask } = useCaptain();
-  const [celebrating, setCelebrating] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  if (!ready) return <div className="sea-bg min-h-screen" />;
 
-  const total = BLOCKS.reduce((n, b) => n + b.tasks.length, 0);
-  const done = state.tasksDone.length;
+  function registrar() {
+    if (user.trim().length < 3) return setError("El usuario necesita al menos 3 letras.");
+    if (password.length < 4) return setError("La contraseña necesita al menos 4 caracteres.");
+    if (password !== password2) return setError("Las contraseñas no coinciden.");
+    createAdmin(user, password);
+    setError(null);
+    setPassword("");
+    setPassword2("");
+    navigate({ to: "/rey" });
+  }
 
-  function handle(id: string) {
-    const result = toggleTask(id);
-    if (result === "earned") {
-      setCelebrating(id);
-      setMessage(`¡+${TASK_REWARD} Berries, grumete!`);
-      setTimeout(() => setCelebrating(null), 900);
-      setTimeout(() => setMessage(null), 1600);
-    } else if (result === "limit") {
-      setMessage("¡Ya llegaste al límite de la semana! 🏴‍☠️");
-      setTimeout(() => setMessage(null), 2200);
+  function entrarAdmin() {
+    if (loginAdmin(user, password)) {
+      setError(null);
+      setPassword("");
+      navigate({ to: "/rey" });
+    } else {
+      setError("Contraseña incorrecta, impostor.");
     }
   }
 
   return (
-    <PirateShell title="Mi Barco" subtitle="Cumple tus guardias del día y llena el cofre">
-      <div className="mb-5 rounded-3xl border-4 border-ink/15 bg-card/95 p-4 float-card">
-        <div className="flex items-center justify-between font-display text-lg font-extrabold">
-          <span>Guardias completadas hoy</span>
-          <span>
-            {done}/{total}
-          </span>
-        </div>
-        <div className="mt-2 h-5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="gold-bg h-full rounded-full transition-all duration-500"
-            style={{ width: `${(done / total) * 100}%` }}
+    <div className="sea-bg flex min-h-screen flex-col items-center justify-center p-6">
+      <div className="mb-8 flex items-center gap-3">
+        <Anchor className="size-12 text-gold" />
+        <h1 className="font-display text-4xl font-extrabold text-sea-foreground drop-shadow-md lg:text-5xl">
+          El Diario del Capitán
+        </h1>
+      </div>
+
+      {!admin ? (
+        <section className="w-full max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+          <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
+            <Crown className="size-8 text-gold" /> Da de alta al Rey Pirata
+          </h2>
+          <p className="font-bold text-muted-foreground">
+            Crea el usuario y la contraseña del administrador.
+          </p>
+          <input
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            placeholder="Usuario"
+            className="mt-4 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
           />
-        </div>
-      </div>
-
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {BLOCKS.map((block) => {
-          const Icon = block.icon;
-          return (
-            <section
-              key={block.id}
-              className="rounded-3xl border-4 border-ink/15 bg-card/95 p-4 float-card"
-            >
-              <header
-                className={`mb-4 flex items-center gap-3 rounded-2xl px-4 py-3 ${block.tone}`}
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Contraseña"
+            className="mt-3 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
+          />
+          <input
+            type="password"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            placeholder="Repite la contraseña"
+            className="mt-3 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
+          />
+          {error && <p className="mt-3 font-bold text-destructive">{error}</p>}
+          <button
+            type="button"
+            onClick={registrar}
+            className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
+          >
+            Crear Rey Pirata
+          </button>
+        </section>
+      ) : (
+        <>
+          <p className="mb-6 font-display text-2xl font-extrabold text-sea-foreground">
+            ¿Quién navega hoy?
+          </p>
+          <div className="flex flex-wrap items-start justify-center gap-6">
+            {kids.map((kid) => (
+              <button
+                key={kid.id}
+                type="button"
+                onClick={() => {
+                  enterKid(kid.id);
+                  navigate({ to: "/barco" });
+                }}
+                className="chunky flex w-40 flex-col items-center gap-3 rounded-3xl border-4 border-ink/20 bg-card/95 p-5 float-card"
               >
-                <Icon className="size-8" />
-                <h2 className="font-display text-2xl font-extrabold">{block.title}</h2>
-              </header>
+                <Avatar avatar={kid.avatar} />
+                <span className="font-display text-xl font-extrabold">{kid.name}</span>
+              </button>
+            ))}
 
-              <ul className="space-y-3">
-                {block.tasks.map((task) => {
-                  const checked = state.tasksDone.includes(task.id);
-                  return (
-                    <li key={task.id} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => handle(task.id)}
-                        aria-pressed={checked}
-                        className={`chunky flex w-full items-center gap-4 rounded-2xl border-4 px-4 py-4 text-left transition-colors ${
-                          checked
-                            ? "border-leaf bg-leaf/15"
-                            : "border-ink/10 bg-secondary hover:bg-muted"
-                        }`}
-                      >
-                        <span
-                          className={`flex size-12 shrink-0 items-center justify-center rounded-xl border-4 ${
-                            checked
-                              ? "border-leaf bg-leaf text-leaf-foreground"
-                              : "border-ink/20 bg-card"
-                          }`}
-                        >
-                          {checked ? <Check className="size-8" strokeWidth={4} /> : null}
-                        </span>
-                        <span className="text-2xl">{task.emoji}</span>
-                        <span
-                          className={`font-display text-xl font-extrabold ${
-                            checked ? "text-muted-foreground line-through" : ""
-                          }`}
-                        >
-                          {task.label}
-                        </span>
-                      </button>
+            <button
+              type="button"
+              onClick={() => setAskingAdmin(true)}
+              className="chunky flex w-40 flex-col items-center gap-3 rounded-3xl border-4 border-ink/20 bg-gold p-5 float-card"
+            >
+              <span className="flex size-24 items-center justify-center rounded-full border-4 border-ink/20 bg-card text-5xl">
+                👑
+              </span>
+              <span className="font-display text-xl font-extrabold text-gold-foreground">
+                Rey Pirata
+              </span>
+            </button>
+          </div>
 
-                      {celebrating === task.id && (
-                        <span className="animate-celebrate pointer-events-none absolute -top-2 right-4 flex items-center gap-1 rounded-full bg-gold px-3 py-1 font-display text-lg font-extrabold text-gold-foreground">
-                          <Sparkles className="size-5" /> +{TASK_REWARD}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+          {kids.length === 0 && (
+            <p className="mt-6 max-w-md text-center font-bold text-sea-foreground/90">
+              Todavía no hay grumetes. Entra como Rey Pirata para dar de alta a la tripulación.
+            </p>
+          )}
 
-      {message && (
-        <div
-          role="status"
-          className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border-4 border-ink/20 bg-card px-6 py-3 font-display text-xl font-extrabold float-card lg:bottom-8"
-        >
-          {message}
-        </div>
+          {askingAdmin && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-6">
+              <div className="w-full max-w-sm rounded-3xl border-4 border-ink/20 bg-card p-6">
+                <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
+                  <Lock className="size-7" /> Acceso del Rey Pirata
+                </h2>
+                <input
+                  value={user}
+                  onChange={(e) => setUser(e.target.value)}
+                  placeholder="Usuario"
+                  className="mt-4 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Contraseña"
+                  className="mt-3 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
+                />
+                {error && <p className="mt-3 font-bold text-destructive">{error}</p>}
+                <div className="mt-5 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAskingAdmin(false);
+                      setError(null);
+                      setPassword("");
+                    }}
+                    className="chunky flex-1 rounded-2xl border-4 border-ink/15 bg-secondary py-3 font-display text-lg font-extrabold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={entrarAdmin}
+                    className="chunky flex-1 rounded-2xl border-4 border-ink/20 bg-primary py-3 font-display text-lg font-extrabold text-primary-foreground"
+                  >
+                    Entrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
-    </PirateShell>
+    </div>
+  );
+}
+
+function Avatar({ avatar }: { avatar: string }) {
+  const isImage = avatar.startsWith("data:") || avatar.startsWith("http");
+  return (
+    <span className="flex size-24 items-center justify-center overflow-hidden rounded-full border-4 border-ink/20 bg-secondary text-5xl">
+      {isImage ? (
+        <img src={avatar} alt="" className="size-full object-cover" />
+      ) : (
+        (avatar || "🧒")
+      )}
+    </span>
   );
 }

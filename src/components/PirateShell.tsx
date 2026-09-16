@@ -1,12 +1,12 @@
-import { Link } from "@tanstack/react-router";
-import { Ship, Coins, Swords, Map as MapIcon, Anchor } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Ship, Coins, Map as MapIcon, Anchor, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
-import { BerryBadge } from "./BerryBadge";
+import { DoblonBadge } from "./DoblonBadge";
+import { useCaptain } from "@/lib/captain-store";
 
 const TABS = [
-  { to: "/", label: "Mi Barco", icon: Ship },
+  { to: "/barco", label: "Mi Barco", icon: Ship },
   { to: "/tesoro", label: "El Tesoro", icon: Coins },
-  { to: "/entrenamiento", label: "Entrenamiento", icon: Swords },
   { to: "/mapa", label: "Gran Mapa", icon: MapIcon },
 ] as const;
 
@@ -19,6 +19,9 @@ export function PirateShell({
   subtitle: string;
   children: ReactNode;
 }) {
+  const { logout, activeKid } = useCaptain();
+  const navigate = useNavigate();
+
   return (
     <div className="sea-bg min-h-screen">
       <div className="flex min-h-screen flex-col lg:flex-row">
@@ -33,7 +36,6 @@ export function PirateShell({
             <Link
               key={to}
               to={to}
-              activeOptions={{ exact: to === "/" }}
               activeProps={{
                 className: "bg-primary text-primary-foreground border-ink/25",
               }}
@@ -46,6 +48,17 @@ export function PirateShell({
               {label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              navigate({ to: "/" });
+            }}
+            className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 border-transparent bg-secondary px-3 py-3 text-center font-display text-sm font-extrabold lg:mt-auto lg:flex-row lg:gap-3 lg:text-left lg:text-base"
+          >
+            <LogOut className="size-7 shrink-0" />
+            Salir
+          </button>
         </nav>
 
         <main className="order-1 flex-1 overflow-x-hidden lg:order-2">
@@ -54,9 +67,12 @@ export function PirateShell({
               <h1 className="font-display text-3xl font-extrabold text-sea-foreground drop-shadow-md lg:text-4xl">
                 {title}
               </h1>
-              <p className="font-bold text-sea-foreground/85">{subtitle}</p>
+              <p className="font-bold text-sea-foreground/85">
+                {activeKid ? `Grumete ${activeKid.name} · ` : ""}
+                {subtitle}
+              </p>
             </div>
-            <BerryBadge />
+            <DoblonBadge />
           </header>
           <div className="px-5 pb-8 lg:px-8">{children}</div>
         </main>
