@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BarcoRouteImport } from './routes/barco'
 import { Route as EntrenamientoRouteImport } from './routes/entrenamiento'
 import { Route as MapaRouteImport } from './routes/mapa'
 import { Route as TesoroRouteImport } from './routes/tesoro'
@@ -17,6 +18,11 @@ import { Route as TesoroRouteImport } from './routes/tesoro'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BarcoRoute = BarcoRouteImport.update({
+  id: '/barco',
+  path: '/barco',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntrenamientoRoute = EntrenamientoRouteImport.update({
@@ -37,12 +43,14 @@ const TesoroRoute = TesoroRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/barco': typeof BarcoRoute
   '/entrenamiento': typeof EntrenamientoRoute
   '/mapa': typeof MapaRoute
   '/tesoro': typeof TesoroRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/barco': typeof BarcoRoute
   '/entrenamiento': typeof EntrenamientoRoute
   '/mapa': typeof MapaRoute
   '/tesoro': typeof TesoroRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/barco': typeof BarcoRoute
   '/entrenamiento': typeof EntrenamientoRoute
   '/mapa': typeof MapaRoute
   '/tesoro': typeof TesoroRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/entrenamiento' | '/mapa' | '/tesoro'
+  fullPaths: '/' | '/barco' | '/entrenamiento' | '/mapa' | '/tesoro'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/entrenamiento' | '/mapa' | '/tesoro'
-  id: '__root__' | '/' | '/entrenamiento' | '/mapa' | '/tesoro'
+  to: '/' | '/barco' | '/entrenamiento' | '/mapa' | '/tesoro'
+  id: '__root__' | '/' | '/barco' | '/entrenamiento' | '/mapa' | '/tesoro'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BarcoRoute: typeof BarcoRoute
   EntrenamientoRoute: typeof EntrenamientoRoute
   MapaRoute: typeof MapaRoute
   TesoroRoute: typeof TesoroRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/barco': {
+      id: '/barco'
+      path: '/barco'
+      fullPath: '/barco'
+      preLoaderRoute: typeof BarcoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entrenamiento': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BarcoRoute: BarcoRoute,
   EntrenamientoRoute: EntrenamientoRoute,
   MapaRoute: MapaRoute,
   TesoroRoute: TesoroRoute,
