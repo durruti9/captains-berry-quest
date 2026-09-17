@@ -22,13 +22,17 @@ export const Route = createFileRoute("/mapa")({
       },
     ],
   }),
-  component: GranMapa,
+  component: () => (
+    <KidGuard>
+      <GranMapa />
+    </KidGuard>
+  ),
 });
 
 const PIECES = ["🏝️", "⚓", "🧭", "💎"];
 
 function GranMapa() {
-  const { state, stampWeek, resetMap } = useCaptain();
+  const { progress, stampWeek, resetMap } = useCaptain();
   const [askingPin, setAskingPin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
