@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Lock, RotateCcw } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
+import { KidGuard } from "@/components/KidGuard";
 import { Confetti } from "@/components/Confetti";
 import { useCaptain } from "@/lib/captain-store";
 
