@@ -42,7 +42,7 @@ export function PirateShell({
               inactiveProps={{
                 className: "bg-secondary text-secondary-foreground border-transparent",
               }}
-              className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 px-3 py-3 text-center font-display text-sm font-extrabold transition-transform hover:scale-[1.03] lg:flex-row lg:gap-3 lg:text-left lg:text-base"
+              className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 lg:flex-none px-3 py-3 text-center font-display text-sm font-extrabold transition-transform hover:scale-[1.03] lg:flex-row lg:gap-3 lg:text-left lg:text-base"
             >
               <Icon className="size-7 shrink-0" />
               {label}
@@ -54,7 +54,7 @@ export function PirateShell({
               logout();
               navigate({ to: "/" });
             }}
-            className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 border-transparent bg-secondary px-3 py-3 text-center font-display text-sm font-extrabold lg:mt-auto lg:flex-row lg:gap-3 lg:text-left lg:text-base"
+            className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 lg:flex-none border-transparent bg-secondary px-3 py-3 text-center font-display text-sm font-extrabold lg:mt-auto lg:flex-row lg:gap-3 lg:text-left lg:text-base"
           >
             <LogOut className="size-7 shrink-0" />
             Salir
