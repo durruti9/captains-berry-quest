@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "El Diario del Capitán" },
       {
         property: "og:description",
-        content: "Rutinas, tesoro, entrenamiento y mapa del tesoro para pequeños piratas.",
+        content: "Rutinas, cofre de Doblones y mapa del tesoro para pequeños piratas.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

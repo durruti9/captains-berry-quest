@@ -203,6 +203,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   const createAdmin = useCallback((user: string, password: string) => {
     setData((prev) => ({ ...prev, admin: { user: user.trim(), password } }));
+    setSession({ kind: "admin" });
   }, []);
 
   const loginAdmin = useCallback(

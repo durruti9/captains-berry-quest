@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Lock, RotateCcw } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
+import { KidGuard } from "@/components/KidGuard";
 import { Confetti } from "@/components/Confetti";
 import { useCaptain } from "@/lib/captain-store";
 
@@ -21,17 +22,21 @@ export const Route = createFileRoute("/mapa")({
       },
     ],
   }),
-  component: GranMapa,
+  component: () => (
+    <KidGuard>
+      <GranMapa />
+    </KidGuard>
+  ),
 });
 
 const PIECES = ["🏝️", "⚓", "🧭", "💎"];
 
 function GranMapa() {
-  const { state, stampWeek, resetMap } = useCaptain();
+  const { progress, stampWeek, resetMap } = useCaptain();
   const [askingPin, setAskingPin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const complete = state.mapStamps >= 4;
+  const complete = progress.mapStamps >= 4;
 
   function confirm() {
     if (pin.trim() !== "1234") {
@@ -54,7 +59,7 @@ function GranMapa() {
         </h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {[0, 1, 2, 3].map((i) => {
-            const filled = i < state.mapStamps;
+            const filled = i < progress.mapStamps;
             return (
               <div
                 key={i}
