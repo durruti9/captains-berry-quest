@@ -36,7 +36,7 @@ function GranMapa() {
   const [askingPin, setAskingPin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const complete = state.mapStamps >= 4;
+  const complete = progress.mapStamps >= 4;
 
   function confirm() {
     if (pin.trim() !== "1234") {
@@ -59,7 +59,7 @@ function GranMapa() {
         </h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {[0, 1, 2, 3].map((i) => {
-            const filled = i < state.mapStamps;
+            const filled = i < progress.mapStamps;
             return (
               <div
                 key={i}
