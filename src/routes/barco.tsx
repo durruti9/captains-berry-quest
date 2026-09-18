@@ -43,8 +43,8 @@ function MiBarco() {
   const total = tasks.length;
   const done = tasks.filter((t) => progress.tasksDone.includes(t.id)).length;
 
-  function handle(id: string, value: number) {
-    const result = toggleTask(id);
+  async function handle(id: string, value: number) {
+    const result = await toggleTask(id);
     if (result === "earned") {
       setCelebrating(id);
       setMessage(`¡+${value} Doblones, grumete!`);
@@ -106,7 +106,7 @@ function MiBarco() {
                     <li key={task.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => handle(task.id, task.value)}
+                        onClick={() => void handle(task.id, task.value)}
                         aria-pressed={checked}
                         className={`chunky flex w-full items-center gap-3 rounded-2xl border-4 px-4 py-4 text-left transition-colors ${
                           checked

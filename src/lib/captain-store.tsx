@@ -46,7 +46,7 @@ type Ctx = {
   weeklyRemaining: number;
   dailyRedeemRemaining: number;
   // auth
-  createAdmin: (user: string, password: string) => Promise<{ ok: boolean; reason?: string }>;
+  createAdmin: (user: string, password: string) => Promise<{ ok: boolean; reason?: string | undefined }>;
   loginAdmin: (user: string, password: string) => Promise<boolean>;
   enterKid: (kidId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -59,7 +59,7 @@ type Ctx = {
   removeTask: (id: string) => Promise<void>;
   // kid actions
   toggleTask: (taskId: string) => Promise<"earned" | "undone" | "limit">;
-  redeem: (amount: number) => Promise<{ ok: boolean; reason?: string }>;
+  redeem: (amount: number) => Promise<{ ok: boolean; reason?: string | undefined }>;
   stampWeek: () => Promise<void>;
   resetMap: () => Promise<void>;
 };

@@ -51,8 +51,7 @@ export function PirateShell({
           <button
             type="button"
             onClick={() => {
-              logout();
-              navigate({ to: "/" });
+              void logout().then(() => navigate({ to: "/" }));
             }}
             className="flex flex-1 flex-col items-center gap-1 rounded-2xl border-4 lg:flex-none border-transparent bg-secondary px-3 py-3 text-center font-display text-sm font-extrabold lg:mt-auto lg:flex-row lg:gap-3 lg:text-left lg:text-base"
           >
