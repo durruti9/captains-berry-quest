@@ -31,10 +31,8 @@ async function getSql(): Promise<Sql | null> {
   if (!sqlPromise) {
     sqlPromise = (async () => {
       const { default: postgres } = await import("postgres");
-      const sql = postgres(url, {
-        max: 3,
-        ssl: process.env["DATABASE_SSL"] === "true" ? "require" : undefined,
-      });
+      const useSsl = process.env["DATABASE_SSL"] === "true";
+      const sql = postgres(url, useSsl ? { max: 3, ssl: "require" } : { max: 3 });
       await sql`create table if not exists captain_state (
         id int primary key,
         data jsonb not null,
