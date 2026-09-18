@@ -1,11 +1,10 @@
 # Roadmap — El Diario del Capitán
 
-- [x] Quitar la zona de Entrenamiento (pantalla, navegación y lógica)
-- [x] Renombrar la moneda: Berries → Doblones
-- [x] Límite de canje diario: máximo 60 Doblones (1 hora)
-- [x] Alta del Rey Pirata (admin) con usuario y contraseña
-- [x] Pantalla de inicio con selección de perfiles (estilo Netflix)
-- [x] Panel del Rey Pirata: gestión de Grumetes (nombre + avatar)
-- [x] Panel del Rey Pirata: CRUD de tareas (nombre, valor, icono lucide, momento del día)
+- [x] Eliminar Entrenamiento y renombrar Berries → Doblones
+- [x] Límite diario de canje: 60 Doblones (1 hora)
+- [x] Login con perfiles (Rey Pirata + Grumetes)
+- [x] Panel del Rey Pirata: CRUD de grumetes y de tareas con icono
 - [x] Mi Barco renderiza tareas dinámicas por grumete
-- [x] Tesoro y Mapa por grumete
+- [x] Datos en el servidor con PostgreSQL (fallback en memoria sin DATABASE_URL)
+- [x] App instalable en Android (manifest, iconos, botón "Instalar")
+- [x] Dockerfile, docker-compose y guía DESPLIEGUE.md para Easypanel
