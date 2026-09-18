@@ -160,7 +160,7 @@ function Grumetes() {
           type="button"
           disabled={!name.trim()}
           onClick={() => {
-            addKid({ name: name.trim(), avatar });
+            void addKid({ name: name.trim(), avatar });
             setName("");
             setAvatar(AVATARS[0]!);
           }}
@@ -187,13 +187,13 @@ function Grumetes() {
               </span>
               <input
                 value={kid.name}
-                onChange={(e) => updateKid(kid.id, { name: e.target.value })}
+                onChange={(e) => void updateKid(kid.id, { name: e.target.value })}
                 className="flex-1 rounded-xl border-4 border-transparent bg-transparent px-2 py-1 font-display text-xl font-extrabold focus:border-ink/15 focus:bg-card"
               />
               <button
                 type="button"
                 aria-label={`Borrar a ${kid.name}`}
-                onClick={() => removeKid(kid.id)}
+                onClick={() => void removeKid(kid.id)}
                 className="chunky rounded-xl border-4 border-ink/15 bg-card p-2 text-destructive"
               >
                 <Trash2 className="size-6" />
@@ -259,7 +259,7 @@ function Tareas() {
           type="button"
           disabled={!label.trim()}
           onClick={() => {
-            addTask({ label: label.trim(), value, icon, block });
+            void addTask({ label: label.trim(), value, icon, block });
             setLabel("");
             setValue(10);
           }}
@@ -279,7 +279,7 @@ function Tareas() {
                 task={task}
                 onCancel={() => setEditing(null)}
                 onSave={(patch) => {
-                  updateTask(task.id, patch);
+                  void updateTask(task.id, patch);
                   setEditing(null);
                 }}
               />
@@ -288,7 +288,7 @@ function Tareas() {
                 key={task.id}
                 task={task}
                 onEdit={() => setEditing(task.id)}
-                onDelete={() => removeTask(task.id)}
+                onDelete={() => void removeTask(task.id)}
               />
             ),
           )}

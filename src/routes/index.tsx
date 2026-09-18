@@ -33,19 +33,20 @@ function Inicio() {
 
   if (!ready) return <div className="sea-bg min-h-screen" />;
 
-  function registrar() {
+  async function registrar() {
     if (user.trim().length < 3) return setError("El usuario necesita al menos 3 letras.");
     if (password.length < 4) return setError("La contraseña necesita al menos 4 caracteres.");
     if (password !== password2) return setError("Las contraseñas no coinciden.");
-    createAdmin(user, password);
+    const res = await createAdmin(user, password);
+    if (!res.ok) return setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
     setError(null);
     setPassword("");
     setPassword2("");
     navigate({ to: "/rey" });
   }
 
-  function entrarAdmin() {
-    if (loginAdmin(user, password)) {
+  async function entrarAdmin() {
+    if (await loginAdmin(user, password)) {
       setError(null);
       setPassword("");
       navigate({ to: "/rey" });
@@ -94,7 +95,7 @@ function Inicio() {
           {error && <p className="mt-3 font-bold text-destructive">{error}</p>}
           <button
             type="button"
-            onClick={registrar}
+            onClick={() => void registrar()}
             className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
           >
             Crear Rey Pirata
@@ -111,8 +112,7 @@ function Inicio() {
                 key={kid.id}
                 type="button"
                 onClick={() => {
-                  enterKid(kid.id);
-                  navigate({ to: "/barco" });
+                  void enterKid(kid.id).then(() => navigate({ to: "/barco" }));
                 }}
                 className="chunky flex w-40 flex-col items-center gap-3 rounded-3xl border-4 border-ink/20 bg-card/95 p-5 float-card"
               >
@@ -175,7 +175,7 @@ function Inicio() {
                   </button>
                   <button
                     type="button"
-                    onClick={entrarAdmin}
+                    onClick={() => void entrarAdmin()}
                     className="chunky flex-1 rounded-2xl border-4 border-ink/20 bg-primary py-3 font-display text-lg font-extrabold text-primary-foreground"
                   >
                     Entrar

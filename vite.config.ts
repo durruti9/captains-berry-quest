@@ -6,10 +6,26 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Autoalojado (Docker / Easypanel / VPS): SELF_HOST=1 compila un servidor Node
+// en .output/server/index.mjs en lugar del build para Cloudflare.
+const selfHost = process.env["SELF_HOST"] === "1";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  ...(selfHost
+    ? {
+        nitro: {
+          preset: "node-server",
+          output: {
+            dir: ".output",
+            serverDir: ".output/server",
+            publicDir: ".output/public",
+          },
+        },
+      }
+    : {}),
 });

@@ -35,8 +35,8 @@ function Tesoro() {
 
   const pct = Math.min(100, (progress.weeklyEarned / WEEKLY_LIMIT) * 100);
 
-  function canjear() {
-    const result = redeem(amount);
+  async function canjear() {
+    const result = await redeem(amount);
     setFeedback(
       result.ok
         ? `¡Cedidos ${amount} Doblones! Tienes ${amount} minutos de consola. 🎮`
@@ -118,7 +118,7 @@ function Tesoro() {
 
             <button
               type="button"
-              onClick={canjear}
+              onClick={() => void canjear()}
               className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
             >
               Canjear Tiempo

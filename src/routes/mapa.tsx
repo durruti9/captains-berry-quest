@@ -43,7 +43,7 @@ function GranMapa() {
       setError("Código incorrecto. Pídeselo al Capitán (Papi).");
       return;
     }
-    stampWeek();
+    void stampWeek();
     setAskingPin(false);
     setPin("");
     setError(null);
@@ -98,7 +98,7 @@ function GranMapa() {
           </p>
           <button
             type="button"
-            onClick={resetMap}
+            onClick={() => void resetMap()}
             className="chunky mt-6 inline-flex items-center gap-2 rounded-2xl border-4 border-ink/15 bg-secondary px-6 py-3 font-display text-lg font-extrabold"
           >
             <RotateCcw className="size-6" /> Empezar un mes nuevo

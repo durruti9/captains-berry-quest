@@ -8,124 +8,37 @@ import {
   type ReactNode,
 } from "react";
 
-export const WEEKLY_LIMIT = 240;
-export const DAILY_REDEEM_LIMIT = 60;
+import * as api from "./captain.functions";
+import {
+  DAILY_REDEEM_LIMIT,
+  WEEKLY_LIMIT,
+  emptyData,
+  newProgress,
+  refreshProgress,
+  type Kid,
+  type KidProgress,
+  type PublicData,
+  type Session,
+  type Task,
+} from "./captain-shared";
 
-export type DayBlock = "manana" | "tarde" | "noche";
-
-export type Task = {
-  id: string;
-  label: string;
-  value: number;
-  icon: string;
-  block: DayBlock;
-};
-
-export type Kid = {
-  id: string;
-  name: string;
-  avatar: string; // emoji or data URL
-};
-
-export type Admin = {
-  user: string;
-  password: string;
-};
-
-export type KidProgress = {
-  balance: number;
-  weeklyEarned: number;
-  weekKey: string;
-  dayKey: string;
-  tasksDone: string[];
-  redeemedToday: number;
-  mapStamps: number;
-};
-
-export type Session = { kind: "admin" } | { kind: "kid"; kidId: string } | null;
-
-type Data = {
-  admin: Admin | null;
-  kids: Kid[];
-  tasks: Task[];
-  progress: Record<string, KidProgress>;
-};
-
-const STORAGE_KEY = "diario-del-capitan-v2";
-const SESSION_KEY = "diario-del-capitan-session";
-
-function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
-}
-
-function weekKey(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
-function newProgress(): KidProgress {
-  return {
-    balance: 0,
-    weeklyEarned: 0,
-    weekKey: weekKey(),
-    dayKey: todayKey(),
-    tasksDone: [],
-    redeemedToday: 0,
-    mapStamps: 0,
-  };
-}
-
-function refresh(p: KidProgress): KidProgress {
-  let next = p;
-  if (next.weekKey !== weekKey()) next = { ...next, weekKey: weekKey(), weeklyEarned: 0 };
-  if (next.dayKey !== todayKey())
-    next = { ...next, dayKey: todayKey(), tasksDone: [], redeemedToday: 0 };
-  return next;
-}
-
-export const DEFAULT_TASKS: Task[] = [
-  { id: "t-cama", label: "Hacer la cama", value: 10, icon: "Bed", block: "manana" },
-  { id: "t-dientes-m", label: "Lavarse los dientes", value: 10, icon: "Brush", block: "manana" },
-  { id: "t-vestir", label: "Vestirse solo", value: 10, icon: "Shirt", block: "manana" },
-  { id: "t-mochila", label: "Mochila lista", value: 10, icon: "Backpack", block: "manana" },
-  { id: "t-deberes", label: "Hacer los deberes", value: 15, icon: "BookOpen", block: "tarde" },
-  { id: "t-merienda", label: "Recoger la merienda", value: 10, icon: "Apple", block: "tarde" },
-  { id: "t-juguetes", label: "Ordenar los juguetes", value: 10, icon: "ToyBrick", block: "tarde" },
-  { id: "t-ducha", label: "Ducha de marinero", value: 10, icon: "ShowerHead", block: "noche" },
-  { id: "t-dientes-n", label: "Lavarse los dientes", value: 10, icon: "Smile", block: "noche" },
-  {
-    id: "t-ropa",
-    label: "Ropa de mañana preparada",
-    value: 10,
-    icon: "WashingMachine",
-    block: "noche",
-  },
-  { id: "t-lectura", label: "Leer un poquito", value: 15, icon: "BookOpen", block: "noche" },
-];
-
-export const BLOCK_LABELS: Record<DayBlock, string> = {
-  manana: "Mañana",
-  tarde: "Tarde",
-  noche: "Noche",
-};
-
-function initialData(): Data {
-  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {} };
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
+export {
+  WEEKLY_LIMIT,
+  DAILY_REDEEM_LIMIT,
+  BLOCK_LABELS,
+  DEFAULT_TASKS,
+  type DayBlock,
+  type Kid,
+  type KidProgress,
+  type Session,
+  type Task,
+} from "./captain-shared";
 
 type Ctx = {
   ready: boolean;
-  data: Data;
+  data: PublicData;
   session: Session;
-  admin: Admin | null;
+  admin: { user: string } | null;
   kids: Kid[];
   tasks: Task[];
   activeKid: Kid | null;
@@ -133,52 +46,55 @@ type Ctx = {
   weeklyRemaining: number;
   dailyRedeemRemaining: number;
   // auth
-  createAdmin: (user: string, password: string) => void;
-  loginAdmin: (user: string, password: string) => boolean;
-  enterKid: (kidId: string) => void;
-  logout: () => void;
+  createAdmin: (user: string, password: string) => Promise<{ ok: boolean; reason?: string | undefined }>;
+  loginAdmin: (user: string, password: string) => Promise<boolean>;
+  enterKid: (kidId: string) => Promise<void>;
+  logout: () => Promise<void>;
   // admin crud
-  addKid: (kid: Omit<Kid, "id">) => void;
-  updateKid: (id: string, patch: Partial<Omit<Kid, "id">>) => void;
-  removeKid: (id: string) => void;
-  addTask: (task: Omit<Task, "id">) => void;
-  updateTask: (id: string, patch: Partial<Omit<Task, "id">>) => void;
-  removeTask: (id: string) => void;
+  addKid: (kid: Omit<Kid, "id">) => Promise<void>;
+  updateKid: (id: string, patch: Partial<Omit<Kid, "id">>) => Promise<void>;
+  removeKid: (id: string) => Promise<void>;
+  addTask: (task: Omit<Task, "id">) => Promise<void>;
+  updateTask: (id: string, patch: Partial<Omit<Task, "id">>) => Promise<void>;
+  removeTask: (id: string) => Promise<void>;
   // kid actions
-  toggleTask: (taskId: string) => "earned" | "undone" | "limit";
-  redeem: (amount: number) => { ok: boolean; reason?: string };
-  stampWeek: () => void;
-  resetMap: () => void;
+  toggleTask: (taskId: string) => Promise<"earned" | "undone" | "limit">;
+  redeem: (amount: number) => Promise<{ ok: boolean; reason?: string | undefined }>;
+  stampWeek: () => Promise<void>;
+  resetMap: () => Promise<void>;
 };
 
 const CaptainContext = createContext<Ctx | null>(null);
 
 export function CaptainProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<Data>(initialData);
+  const [data, setData] = useState<PublicData>(emptyData);
   const [session, setSession] = useState<Session>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setData({ ...initialData(), ...JSON.parse(raw) });
-      const rawSession = localStorage.getItem(SESSION_KEY);
-      if (rawSession) setSession(JSON.parse(rawSession));
-    } catch {
-      /* empty */
-    }
-    setReady(true);
-  }, []);
+  const applySnapshot = useCallback(
+    (snap: { data: PublicData | null; session: Session }) => {
+      if (snap.data) setData(snap.data);
+      setSession(snap.session);
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!ready) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    } catch {
-      /* empty */
-    }
-  }, [data, session, ready]);
+    let alive = true;
+    api
+      .fetchSnapshot()
+      .then((snap) => {
+        if (!alive) return;
+        applySnapshot(snap);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (alive) setReady(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [applySnapshot]);
 
   const activeKidId = session?.kind === "kid" ? session.kidId : null;
   const activeKid = useMemo(
@@ -188,142 +104,106 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   const progress = useMemo(() => {
     if (!activeKidId) return newProgress();
-    return refresh(data.progress[activeKidId] ?? newProgress());
+    return refreshProgress(data.progress[activeKidId] ?? newProgress());
   }, [data.progress, activeKidId]);
 
-  const patchProgress = useCallback(
-    (kidId: string, fn: (p: KidProgress) => KidProgress) => {
-      setData((prev) => {
-        const current = refresh(prev.progress[kidId] ?? newProgress());
-        return { ...prev, progress: { ...prev.progress, [kidId]: fn(current) } };
-      });
+  const createAdmin = useCallback(
+    async (user: string, password: string) => {
+      const res = await api.createAdmin({ data: { user, password } });
+      applySnapshot(res);
+      return { ok: res.ok, reason: res.reason };
     },
-    [setData],
+    [applySnapshot],
   );
-
-  const createAdmin = useCallback((user: string, password: string) => {
-    setData((prev) => ({ ...prev, admin: { user: user.trim(), password } }));
-    setSession({ kind: "admin" });
-  }, []);
 
   const loginAdmin = useCallback(
-    (user: string, password: string) => {
-      if (!data.admin) return false;
-      const ok =
-        data.admin.password === password &&
-        (user.trim() === "" || user.trim().toLowerCase() === data.admin.user.toLowerCase());
-      if (ok) setSession({ kind: "admin" });
-      return ok;
+    async (user: string, password: string) => {
+      const res = await api.loginAdmin({ data: { user, password } });
+      if (res.ok) applySnapshot(res);
+      return res.ok;
     },
-    [data.admin],
+    [applySnapshot],
   );
 
-  const enterKid = useCallback((kidId: string) => setSession({ kind: "kid", kidId }), []);
-  const logout = useCallback(() => setSession(null), []);
+  const enterKid = useCallback(
+    async (kidId: string) => {
+      const res = await api.enterKid({ data: { kidId } });
+      if (res.ok) applySnapshot(res);
+    },
+    [applySnapshot],
+  );
 
-  const addKid = useCallback((kid: Omit<Kid, "id">) => {
-    setData((prev) => ({ ...prev, kids: [...prev.kids, { ...kid, id: uid() }] }));
-  }, []);
+  const logout = useCallback(async () => {
+    applySnapshot(await api.logout());
+  }, [applySnapshot]);
 
-  const updateKid = useCallback((id: string, patch: Partial<Omit<Kid, "id">>) => {
-    setData((prev) => ({
-      ...prev,
-      kids: prev.kids.map((k) => (k.id === id ? { ...k, ...patch } : k)),
-    }));
-  }, []);
+  const addKid = useCallback(
+    async (kid: Omit<Kid, "id">) => {
+      applySnapshot({ ...(await api.addKid({ data: kid })), session });
+    },
+    [applySnapshot, session],
+  );
 
-  const removeKid = useCallback((id: string) => {
-    setData((prev) => {
-      const progressCopy = { ...prev.progress };
-      delete progressCopy[id];
-      return { ...prev, kids: prev.kids.filter((k) => k.id !== id), progress: progressCopy };
-    });
-  }, []);
+  const updateKid = useCallback(
+    async (id: string, patch: Partial<Omit<Kid, "id">>) => {
+      applySnapshot({ ...(await api.updateKid({ data: { id, patch } })), session });
+    },
+    [applySnapshot, session],
+  );
 
-  const addTask = useCallback((task: Omit<Task, "id">) => {
-    setData((prev) => ({ ...prev, tasks: [...prev.tasks, { ...task, id: uid() }] }));
-  }, []);
+  const removeKid = useCallback(
+    async (id: string) => {
+      applySnapshot({ ...(await api.removeKid({ data: { id } })), session });
+    },
+    [applySnapshot, session],
+  );
 
-  const updateTask = useCallback((id: string, patch: Partial<Omit<Task, "id">>) => {
-    setData((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-    }));
-  }, []);
+  const addTask = useCallback(
+    async (task: Omit<Task, "id">) => {
+      applySnapshot({ ...(await api.addTask({ data: task })), session });
+    },
+    [applySnapshot, session],
+  );
 
-  const removeTask = useCallback((id: string) => {
-    setData((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }));
-  }, []);
+  const updateTask = useCallback(
+    async (id: string, patch: Partial<Omit<Task, "id">>) => {
+      applySnapshot({ ...(await api.updateTask({ data: { id, patch } })), session });
+    },
+    [applySnapshot, session],
+  );
+
+  const removeTask = useCallback(
+    async (id: string) => {
+      applySnapshot({ ...(await api.removeTask({ data: { id } })), session });
+    },
+    [applySnapshot, session],
+  );
 
   const toggleTask = useCallback(
-    (taskId: string) => {
-      if (!activeKidId) return "limit" as const;
-      const task = data.tasks.find((t) => t.id === taskId);
-      if (!task) return "limit" as const;
-      let result: "earned" | "undone" | "limit" = "earned";
-      patchProgress(activeKidId, (p) => {
-        if (p.tasksDone.includes(taskId)) {
-          result = "undone";
-          return {
-            ...p,
-            tasksDone: p.tasksDone.filter((t) => t !== taskId),
-            balance: Math.max(0, p.balance - task.value),
-            weeklyEarned: Math.max(0, p.weeklyEarned - task.value),
-          };
-        }
-        const granted = Math.min(task.value, WEEKLY_LIMIT - p.weeklyEarned);
-        if (granted <= 0) {
-          result = "limit";
-          return { ...p, tasksDone: [...p.tasksDone, taskId] };
-        }
-        result = "earned";
-        return {
-          ...p,
-          tasksDone: [...p.tasksDone, taskId],
-          balance: p.balance + granted,
-          weeklyEarned: p.weeklyEarned + granted,
-        };
-      });
-      return result;
+    async (taskId: string) => {
+      const res = await api.toggleTask({ data: { taskId } });
+      applySnapshot(res);
+      return res.result;
     },
-    [activeKidId, data.tasks, patchProgress],
+    [applySnapshot],
   );
 
   const redeem = useCallback(
-    (amount: number) => {
-      if (!activeKidId) return { ok: false, reason: "Elige primero un perfil de grumete." };
-      if (amount <= 0) return { ok: false, reason: "Escribe cuántos Doblones quieres gastar." };
-      if (amount > progress.balance)
-        return { ok: false, reason: "No tienes suficientes Doblones en el cofre. ¡A por más tareas!" };
-      const remaining = Math.max(0, DAILY_REDEEM_LIMIT - progress.redeemedToday);
-      if (amount > remaining) {
-        return {
-          ok: false,
-          reason:
-            remaining === 0
-              ? "¡Ya has canjeado tu hora de juego de hoy! Vuelve mañana, grumete. ⏰"
-              : `Máximo 1 hora al día: hoy solo te quedan ${remaining} minutos por canjear.`,
-        };
-      }
-      patchProgress(activeKidId, (p) => ({
-        ...p,
-        balance: p.balance - amount,
-        redeemedToday: p.redeemedToday + amount,
-      }));
-      return { ok: true };
+    async (amount: number) => {
+      const res = await api.redeem({ data: { amount } });
+      applySnapshot(res);
+      return { ok: res.ok, reason: res.reason };
     },
-    [activeKidId, progress.balance, progress.redeemedToday, patchProgress],
+    [applySnapshot],
   );
 
-  const stampWeek = useCallback(() => {
-    if (!activeKidId) return;
-    patchProgress(activeKidId, (p) => ({ ...p, mapStamps: Math.min(4, p.mapStamps + 1) }));
-  }, [activeKidId, patchProgress]);
+  const stampWeek = useCallback(async () => {
+    applySnapshot(await api.stampWeek());
+  }, [applySnapshot]);
 
-  const resetMap = useCallback(() => {
-    if (!activeKidId) return;
-    patchProgress(activeKidId, (p) => ({ ...p, mapStamps: 0 }));
-  }, [activeKidId, patchProgress]);
+  const resetMap = useCallback(async () => {
+    applySnapshot(await api.resetMap());
+  }, [applySnapshot]);
 
   const value = useMemo<Ctx>(
     () => ({
