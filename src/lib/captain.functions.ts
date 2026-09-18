@@ -67,9 +67,14 @@ export const createAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { mutateState, hashPassword, newSalt } = await import("./captain-db.server");
     const user = data.user.trim();
-    if (user.length < 3) return { ok: false, reason: "El usuario necesita al menos 3 letras." };
-    if (data.password.length < 4)
-      return { ok: false, reason: "La contraseña necesita al menos 4 caracteres." };
+    const fail = (reason: string) => ({
+      ok: false as const,
+      reason,
+      data: null,
+      session: null as Session,
+    });
+    if (user.length < 3) return fail("El usuario necesita al menos 3 letras.");
+    if (data.password.length < 4) return fail("La contraseña necesita al menos 4 caracteres.");
 
     const salt = newSalt();
     const hash = await hashPassword(data.password, salt);
@@ -81,9 +86,14 @@ export const createAdmin = createServerFn({ method: "POST" })
       }
       s.admin = { user, hash, salt };
     });
-    if (taken) return { ok: false, reason: "El Rey Pirata ya está dado de alta." };
+    if (taken) return fail("El Rey Pirata ya está dado de alta.");
     await writeSession({ kind: "admin" });
-    return { ok: true, ...{ data: toPublic(state), session: { kind: "admin" } as Session } };
+    return {
+      ok: true as const,
+      reason: undefined,
+      data: toPublic(state),
+      session: { kind: "admin" } as Session,
+    };
   });
 
 export const loginAdmin = createServerFn({ method: "POST" })
