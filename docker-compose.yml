@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgres://capitan:capitan@db:5432/capitan
+      SESSION_SECRET: cambia-esto-por-una-frase-larga-de-32-caracteres-o-mas
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: capitan
+      POSTGRES_PASSWORD: capitan
+      POSTGRES_DB: capitan
+    volumes:
+      - capitan-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capitan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  capitan-db:
