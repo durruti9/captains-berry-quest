@@ -23,6 +23,7 @@ type RuntimeStorage = {
   readyPromise: Promise<void> | null;
   queue: Promise<void>;
   locationPromise: Promise<StorageLocation> | null;
+  location: StorageLocation | null;
 };
 
 type StorageLocation = {
@@ -31,11 +32,12 @@ type StorageLocation = {
   fallbackReason: string | null;
 };
 
-const runtimeGlobal = globalThis as unknown as { __captainFileStorage?: RuntimeStorage };
-const runtimeStorage = (runtimeGlobal.__captainFileStorage ??= {
+const runtimeGlobal = globalThis as unknown as { __captainFileStorageV2?: RuntimeStorage };
+const runtimeStorage = (runtimeGlobal.__captainFileStorageV2 ??= {
   readyPromise: null,
   queue: Promise.resolve(),
   locationPromise: null,
+  location: null,
 });
 
 async function resolveStorageLocation(): Promise<StorageLocation> {
@@ -59,11 +61,13 @@ async function resolveStorageLocation(): Promise<StorageLocation> {
           await writeFile(probe, "ok", { encoding: "utf8", mode: 0o600 });
           await unlink(probe);
           const persistent = candidate === configured || candidate === "/data";
-          return {
+          const location: StorageLocation = {
             dataDir: candidate,
             mode: persistent ? "persistent" : "temporary",
             fallbackReason: persistent ? null : firstFailure ?? "El volumen /data no está disponible.",
           };
+          runtimeStorage.location = location;
+          return location;
         } catch (error) {
           firstFailure ??= error instanceof Error ? error.message : "No se puede escribir en /data.";
         }
@@ -72,6 +76,10 @@ async function resolveStorageLocation(): Promise<StorageLocation> {
     })();
   }
   return runtimeStorage.locationPromise;
+}
+
+export function storageMode(): "persistent" | "temporary" {
+  return runtimeStorage.location?.mode ?? "temporary";
 }
 
 function normalizeState(value: unknown): StoredState {
