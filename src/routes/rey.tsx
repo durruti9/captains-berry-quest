@@ -15,6 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  Database,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { useCaptain, BLOCK_LABELS, type DayBlock, type Task } from "@/lib/captain-store";
 import {
@@ -27,6 +30,7 @@ import {
 } from "@/lib/captain-shared";
 import { TASK_ICON_NAMES, getTaskIcon } from "@/lib/task-icons";
 import { MapDayBars } from "@/components/MapDayBars";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/rey")({
   head: () => ({
@@ -52,7 +56,7 @@ export const Route = createFileRoute("/rey")({
 const AVATARS = ["🧒", "👦", "👧", "🦜", "🐙", "🦈", "🐵", "🐯", "🦁", "🐼", "🦊", "🐸"];
 
 function ReyPirata() {
-  const { ready, session, logout } = useCaptain();
+  const { ready, session, logout, data } = useCaptain();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"grumetes" | "tareas" | "estadisticas" | "mapa">("grumetes");
 
@@ -98,6 +102,33 @@ function ReyPirata() {
         </button>
       </header>
 
+      <div
+        className={`mb-6 flex items-start gap-3 rounded-2xl border-4 p-4 font-bold ${
+          data.storage === "postgres"
+            ? "border-leaf/60 bg-leaf/15"
+            : "border-gold bg-gold/20"
+        }`}
+      >
+        {data.storage === "postgres" ? (
+          <Database className="mt-0.5 size-6 shrink-0 text-leaf" />
+        ) : (
+          <AlertTriangle className="mt-0.5 size-6 shrink-0 text-gold-foreground" />
+        )}
+        <div>
+          <p className="font-display text-lg font-extrabold">
+            {data.storage === "postgres"
+              ? "Datos guardados en PostgreSQL"
+              : "Almacenamiento temporal"}
+          </p>
+          {data.storage === "memory" && (
+            <p className="text-sm">
+              Los cambios de esta vista de prueba se borrarán al reconstruir. En Easypanel deben
+              aparecer como guardados en PostgreSQL.
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="mb-6 flex flex-wrap gap-3">
         {(
           [
@@ -134,10 +165,15 @@ function ReyPirata() {
 }
 
 function Grumetes() {
-  const { kids, addKid, removeKid, updateKid } = useCaptain();
+  const { kids, addKid, removeKid, updateKid, resetKidProgress } = useCaptain();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(AVATARS[0]!);
+  const [resetKidId, setResetKidId] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const resetKid = kids.find((kid) => kid.id === resetKidId);
 
   function pickFile(file: File | undefined, apply: (value: string) => void) {
     if (!file) return;
@@ -228,6 +264,18 @@ function Grumetes() {
               />
               <button
                 type="button"
+                aria-label={`Reiniciar progreso de ${kid.name}`}
+                onClick={() => {
+                  setResetKidId(kid.id);
+                  setConfirmation("");
+                  setResetError("");
+                }}
+                className="chunky rounded-xl border-4 border-ink/15 bg-card p-2 text-gold-foreground"
+              >
+                <RotateCcw className="size-6" />
+              </button>
+              <button
+                type="button"
                 aria-label={`Borrar a ${kid.name}`}
                 onClick={() => void removeKid(kid.id)}
                 className="chunky rounded-xl border-4 border-ink/15 bg-card p-2 text-destructive"
@@ -241,6 +289,74 @@ function Grumetes() {
           )}
         </ul>
       </section>
+
+      {resetKid && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-progress-title"
+        >
+          <section className="w-full max-w-lg rounded-3xl border-4 border-ink/20 bg-card p-6 float-card">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="size-8 shrink-0 text-destructive" />
+              <div>
+                <h2 id="reset-progress-title" className="font-display text-2xl font-extrabold">
+                  Reiniciar progreso de {resetKid.name}
+                </h2>
+                <p className="mt-2 font-bold text-muted-foreground">
+                  Se borrarán sus tareas realizadas, historial, Doblones, botín y mapa. Su perfil,
+                  las tareas configuradas y los demás grumetes no cambiarán.
+                </p>
+              </div>
+            </div>
+            <label className="mt-5 block font-display font-extrabold" htmlFor="reset-confirmation">
+              Escribe {resetKid.name} para confirmar
+            </label>
+            <input
+              id="reset-confirmation"
+              value={confirmation}
+              onChange={(event) => {
+                setConfirmation(event.target.value);
+                setResetError("");
+              }}
+              className="mt-2 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-lg font-extrabold"
+            />
+            {resetError && <p className="mt-2 font-bold text-destructive">{resetError}</p>}
+            <div className="mt-5 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={resetting}
+                onClick={() => setResetKidId(null)}
+                className="h-auto rounded-2xl border-4 border-ink/15 px-5 py-3 font-display text-lg font-extrabold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={confirmation.trim() !== resetKid.name || resetting}
+                onClick={async () => {
+                  setResetting(true);
+                  setResetError("");
+                  try {
+                    await resetKidProgress(resetKid.id, confirmation);
+                    setResetKidId(null);
+                  } catch {
+                    setResetError("No se pudo reiniciar el progreso. Inténtalo de nuevo.");
+                  } finally {
+                    setResetting(false);
+                  }
+                }}
+                className="h-auto rounded-2xl border-4 border-ink/20 px-5 py-3 font-display text-lg font-extrabold"
+              >
+                <RotateCcw className="size-5" /> {resetting ? "Reiniciando…" : "Reiniciar progreso"}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

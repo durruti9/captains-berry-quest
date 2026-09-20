@@ -93,6 +93,7 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    ```
    DATABASE_URL=postgres://capitan:CLAVE@db:5432/capitan
    SESSION_SECRET=pon-aqui-una-frase-larga-y-secreta-de-32-caracteres-minimo
+    REQUIRE_DATABASE=1
    PORT=3000
    HOST=0.0.0.0
    ```
@@ -101,6 +102,10 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
      pongas**.
 5. **Port**: expón el **3000** (pestaña *Ports* → puerto interno 3000).
 6. **Deploy** y espera al estado verde.
+
+> `REQUIRE_DATABASE=1` evita que un error de configuración arranque la app con
+> almacenamiento temporal. Si falta `DATABASE_URL` o PostgreSQL no responde, el
+> despliegue mostrará el error en lugar de aceptar datos que luego se perderían.
 
 ### Paso 4 — Dominio y HTTPS (obligatorio para instalar en Android)
 
@@ -116,7 +121,10 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
 
 1. Abre la URL HTTPS en el navegador. Debes ver la pantalla de **alta del Rey
    Pirata** (usuario y contraseña).
-2. Si algo falla, revisa la pestaña **Logs** del servicio App:
+2. Entra en la zona del Rey Pirata y comprueba que arriba aparece **“Datos
+   guardados en PostgreSQL”**. Si aparece “Almacenamiento temporal”, no añadas
+   datos: revisa `DATABASE_URL` y vuelve a desplegar.
+3. Si algo falla, revisa la pestaña **Logs** del servicio App:
    - Build: `bun install --frozen-lockfile` + `bun run build` con `SELF_HOST=1`.
    - Runtime: arranca `node .output/server/index.mjs` en el puerto 3000.
 
@@ -177,3 +185,27 @@ docker exec -i <contenedor-postgres> psql -U capitan capitan < copia.sql
 
 En Easypanel, el contenedor se llama como el servicio Postgres
 (ej. `diario-capitan-db-...`); míralo en la pestaña *Containers*.
+
+### Comprobar que existe el registro
+
+Desde la consola del servicio PostgreSQL:
+
+```sh
+psql -U capitan -d capitan -c "select id, updated_at from captain_state;"
+```
+
+Después del primer cambio debe aparecer una fila con `id = 1`. La tabla y esa
+fila las crea la propia app; no las insertes manualmente.
+
+### Actualizar sin perder datos
+
+1. Haz una copia de seguridad con `pg_dump` antes de un cambio importante.
+2. En Easypanel reconstruye o vuelve a desplegar **solo el servicio App**.
+3. No borres ni recrees el servicio PostgreSQL y no elimines su volumen.
+4. Mantén exactamente la misma `DATABASE_URL` y `SESSION_SECRET`.
+5. Tras el despliegue, entra como Rey Pirata y confirma el aviso **“Datos
+   guardados en PostgreSQL”**.
+
+Reconstruir la app no modifica la tabla. Los datos solo se pierden si se borra
+el volumen de PostgreSQL, se cambia la conexión por otra base vacía o se usa la
+aplicación sin `DATABASE_URL`.

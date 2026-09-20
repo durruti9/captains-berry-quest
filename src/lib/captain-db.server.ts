@@ -24,10 +24,22 @@ type Sql = import("postgres").Sql;
 
 let sqlPromise: Promise<Sql> | null = null;
 let memoryState: StoredState | null = null;
+let storageLogged = false;
 
 async function getSql(): Promise<Sql | null> {
   const url = process.env["DATABASE_URL"];
-  if (!url) return null;
+  if (!url) {
+    if (process.env["REQUIRE_DATABASE"] === "1") {
+      throw new Error(
+        "DATABASE_URL es obligatoria en este despliegue. La aplicación no arrancará con almacenamiento temporal.",
+      );
+    }
+    if (!storageLogged) {
+      console.warn("[storage] Almacenamiento temporal activo; los datos se perderán al reiniciar.");
+      storageLogged = true;
+    }
+    return null;
+  }
   if (!sqlPromise) {
     sqlPromise = (async () => {
       const { default: postgres } = await import("postgres");
@@ -38,6 +50,10 @@ async function getSql(): Promise<Sql | null> {
         data jsonb not null,
         updated_at timestamptz not null default now()
       )`;
+      if (!storageLogged) {
+        console.info("[storage] PostgreSQL conectado; persistencia activa.");
+        storageLogged = true;
+      }
       return sql;
     })();
   }

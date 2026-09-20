@@ -11,3 +11,5 @@
 - [x] Estadísticas: calendario mensual editable por día (Rey Pirata)
 - [x] Mapa del tesoro: cofres semanales con 85% objetivo, aprobación del Rey Pirata (sección "Mapa del Tesoro")
 - [x] Gran Mapa diario: 7 barras por semana, semáforo de progreso y fines de semana festivos
+- [x] Persistencia protegida en Easypanel e indicador del almacenamiento
+- [x] Reinicio voluntario del progreso de un único grumete
