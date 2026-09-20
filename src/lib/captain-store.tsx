@@ -61,8 +61,19 @@ type Ctx = {
   // kid actions
   toggleTask: (taskId: string) => Promise<"earned" | "undone" | "limit">;
   redeem: (amount: number) => Promise<{ ok: boolean; reason?: string | undefined }>;
-  stampWeek: () => Promise<void>;
-  resetMap: () => Promise<void>;
+  // admin: mapa del tesoro
+  setWeekApproval: (
+    kidId: string,
+    weekKey: string,
+    extraTasks: string | null,
+  ) => Promise<void>;
+  // admin: estadísticas
+  setDayTask: (
+    kidId: string,
+    day: string,
+    taskId: string,
+    done: boolean,
+  ) => Promise<void>;
 };
 
 const CaptainContext = createContext<Ctx | null>(null);
@@ -198,13 +209,19 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     [applySnapshot],
   );
 
-  const stampWeek = useCallback(async () => {
-    applySnapshot(await api.stampWeek());
-  }, [applySnapshot]);
+  const setWeekApproval = useCallback(
+    async (kidId: string, weekKey: string, extraTasks: string | null) => {
+      applySnapshot(await api.setWeekApproval({ data: { kidId, weekKey, extraTasks } }));
+    },
+    [applySnapshot],
+  );
 
-  const resetMap = useCallback(async () => {
-    applySnapshot(await api.resetMap());
-  }, [applySnapshot]);
+  const setDayTask = useCallback(
+    async (kidId: string, day: string, taskId: string, done: boolean) => {
+      applySnapshot(await api.setDayTask({ data: { kidId, day, taskId, done } }));
+    },
+    [applySnapshot],
+  );
 
   const value = useMemo<Ctx>(
     () => ({
@@ -230,8 +247,8 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       removeTask,
       toggleTask,
       redeem,
-      stampWeek,
-      resetMap,
+      setDayTask,
+      setWeekApproval,
     }),
     [
       ready,
@@ -251,8 +268,8 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       removeTask,
       toggleTask,
       redeem,
-      stampWeek,
-      resetMap,
+      setDayTask,
+      setWeekApproval,
     ],
   );
 

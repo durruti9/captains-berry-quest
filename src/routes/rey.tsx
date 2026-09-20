@@ -1,7 +1,30 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { Crown, LogOut, Plus, Trash2, Pencil, Save, X, Users, ListChecks } from "lucide-react";
+import {
+  Crown,
+  LogOut,
+  Plus,
+  Trash2,
+  Pencil,
+  Save,
+  X,
+  Users,
+  ListChecks,
+  CalendarDays,
+  Map,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+} from "lucide-react";
 import { useCaptain, BLOCK_LABELS, type DayBlock, type Task } from "@/lib/captain-store";
+import {
+  WEEKLY_GOAL_PCT,
+  doneOnDay,
+  mapWeekStats,
+  monthMapWeeks,
+  weekFulfilled,
+  weekKeyOfDay,
+} from "@/lib/captain-shared";
 import { TASK_ICON_NAMES, getTaskIcon } from "@/lib/task-icons";
 
 export const Route = createFileRoute("/rey")({
@@ -28,7 +51,7 @@ const AVATARS = ["🧒", "👦", "👧", "🦜", "🐙", "🦈", "🐵", "🐯",
 function ReyPirata() {
   const { ready, session, logout } = useCaptain();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"grumetes" | "tareas">("grumetes");
+  const [tab, setTab] = useState<"grumetes" | "tareas" | "estadisticas" | "mapa">("grumetes");
 
   if (!ready) return <div className="sea-bg min-h-screen" />;
 
@@ -72,11 +95,13 @@ function ReyPirata() {
         </button>
       </header>
 
-      <div className="mb-6 flex gap-3">
+      <div className="mb-6 flex flex-wrap gap-3">
         {(
           [
             ["grumetes", "Grumetes", Users],
             ["tareas", "Tareas", ListChecks],
+            ["estadisticas", "Estadísticas", CalendarDays],
+            ["mapa", "Mapa del Tesoro", Map],
           ] as const
         ).map(([key, label, Icon]) => (
           <button
@@ -92,7 +117,15 @@ function ReyPirata() {
         ))}
       </div>
 
-      {tab === "grumetes" ? <Grumetes /> : <Tareas />}
+      {tab === "grumetes" ? (
+        <Grumetes />
+      ) : tab === "tareas" ? (
+        <Tareas />
+      ) : tab === "estadisticas" ? (
+        <Estadisticas />
+      ) : (
+        <MapaTesoro />
+      )}
     </div>
   );
 }
@@ -308,6 +341,433 @@ function Tareas() {
           );
         })}
       </section>
+    </div>
+  );
+}
+
+const WEEK_DAYS = ["L", "M", "X", "J", "V", "S", "D"];
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function dayNumberOf(key: string) {
+  return Number(key.slice(8, 10));
+}
+
+function dayValue(done: string[], tasks: Task[]) {
+  return done.reduce((sum, id) => sum + (tasks.find((t) => t.id === id)?.value ?? 0), 0);
+}
+
+function Estadisticas() {
+  const { kids, tasks, data, setDayTask } = useCaptain();
+  const now = new Date();
+  const [kidId, setKidId] = useState<string | null>(null);
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [day, setDay] = useState<string | null>(null);
+
+  const kid = kids.find((k) => k.id === kidId) ?? kids[0];
+  const p = kid ? data.progress[kid.id] : undefined;
+
+  // Días del mes en rejilla de semanas (la semana empieza el lunes).
+  const firstOffset = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cells: (string | null)[] = [
+    ...Array.from({ length: firstOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => `${year}-${pad(month + 1)}-${pad(i + 1)}`),
+  ];
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const today = new Date().toISOString().slice(0, 10);
+  const thisWeek = weekKeyOfDay(today);
+  const selectedWeek = day ? weekKeyOfDay(day) : null;
+  const done = kid && day && p ? doneOnDay(p, day) : [];
+  const weekTotal = day && p ? dayValue(doneOnDay(p, day), tasks) : 0;
+
+  function moveMonth(delta: number) {
+    const d = new Date(Date.UTC(year, month + delta, 1));
+    setYear(d.getUTCFullYear());
+    setMonth(d.getUTCMonth());
+    setDay(null);
+  }
+
+  if (!kid || !p) {
+    return (
+      <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+        <h2 className="font-display text-2xl font-extrabold">Estadísticas</h2>
+        <p className="mt-3 font-bold text-muted-foreground">
+          Da de alta un grumete para ver su calendario de tareas.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+      <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+        <div className="flex flex-wrap items-center gap-2">
+          {kids.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              onClick={() => {
+                setKidId(k.id);
+                setDay(null);
+              }}
+              className={`chunky flex items-center gap-2 rounded-2xl border-4 px-4 py-2 font-display text-lg font-extrabold ${
+                kid.id === k.id ? "border-primary bg-primary/15" : "border-ink/15 bg-secondary"
+              }`}
+            >
+              <span className="text-2xl">
+                {k.avatar.startsWith("data:") ? (
+                  <img src={k.avatar} alt="" className="size-7 rounded-full object-cover" />
+                ) : (
+                  k.avatar
+                )}
+              </span>
+              {k.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            aria-label="Mes anterior"
+            onClick={() => moveMonth(-1)}
+            className="chunky rounded-xl border-4 border-ink/15 bg-secondary p-2"
+          >
+            <ChevronLeft className="size-6" />
+          </button>
+          <h2 className="font-display text-2xl font-extrabold capitalize">
+            {new Date(Date.UTC(year, month, 1)).toLocaleDateString("es-ES", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h2>
+          <button
+            type="button"
+            aria-label="Mes siguiente"
+            onClick={() => moveMonth(1)}
+            className="chunky rounded-xl border-4 border-ink/15 bg-secondary p-2"
+          >
+            <ChevronRight className="size-6" />
+          </button>
+        </div>
+
+        <table className="mt-4 w-full border-separate border-spacing-1">
+          <thead>
+            <tr>
+              {WEEK_DAYS.map((d) => (
+                <th key={d} className="font-display text-sm font-extrabold text-muted-foreground">
+                  {d}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((week, wi) => (
+              <tr key={wi}>
+                {week.map((key, di) => {
+                  if (!key) return <td key={di} />;
+                  const doneList = doneOnDay(p, key);
+                  const total = dayValue(doneList, tasks);
+                  return (
+                    <td key={di}>
+                      <button
+                        type="button"
+                        onClick={() => setDay(key)}
+                        className={`flex h-14 w-full flex-col items-center justify-center rounded-xl border-4 font-display font-extrabold ${
+                          day === key
+                            ? "border-primary bg-primary/15"
+                            : doneList.length > 0
+                              ? "border-leaf/50 bg-leaf/15"
+                              : "border-ink/10 bg-secondary"
+                        } ${key === today ? "ring-4 ring-gold/50" : ""}`}
+                      >
+                        <span className="text-base leading-none">{dayNumberOf(key)}</span>
+                        {doneList.length > 0 && (
+                          <span className="mt-0.5 text-[11px] leading-none text-foreground/70">
+                            {doneList.length} · {total}🕯
+                          </span>
+                        )}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-2 text-sm font-bold text-muted-foreground">
+          Verde: día con tareas hechas · Borde dorado: hoy · Toca un día para revisarlo.
+        </p>
+      </section>
+
+      <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+        {!day ? (
+          <div>
+            <h2 className="font-display text-2xl font-extrabold">Revisar un día</h2>
+            <p className="mt-3 font-bold text-muted-foreground">
+              Toca un día del calendario para marcar o desmarcar sus tareas y corregir los
+              Doblones de {kid.name}.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-2xl font-extrabold capitalize">
+                {new Date(`${day}T12:00:00`).toLocaleDateString("es-ES", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setDay(null)}
+                className="chunky rounded-xl border-4 border-ink/15 bg-card p-2"
+                aria-label="Cerrar día"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <p className="mt-1 font-display text-lg font-extrabold text-muted-foreground">
+              {done.length} tareas · {weekTotal} Doblones{" "}
+              {selectedWeek !== thisWeek && "(va a tu botín)"}
+            </p>
+
+            {BLOCKS.map((block) => {
+              const blockTasks = tasks.filter((t) => t.block === block);
+              if (blockTasks.length === 0) return null;
+              return (
+                <div key={block} className="mt-4">
+                  <h3 className="font-display text-lg font-extrabold text-muted-foreground">
+                    {BLOCK_LABELS[block]}
+                  </h3>
+                  <ul className="mt-2 space-y-2">
+                    {blockTasks.map((task) => {
+                      const isDone = done.includes(task.id);
+                      const Icon = getTaskIcon(task.icon);
+                      return (
+                        <li
+                          key={task.id}
+                          className={`flex items-center gap-3 rounded-2xl border-4 p-3 ${
+                            isDone ? "border-leaf/60 bg-leaf/10" : "border-ink/10 bg-secondary"
+                          }`}
+                        >
+                          <Icon className="size-7 shrink-0 text-primary" />
+                          <div className="flex-1">
+                            <p className="font-display text-lg font-extrabold">{task.label}</p>
+                            <p className="font-display text-sm font-extrabold text-muted-foreground">
+                              {task.value} Doblones
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={
+                              isDone
+                                ? `Desmarcar ${task.label} el ${day}`
+                                : `Marcar ${task.label} el ${day}`
+                            }
+                            onClick={() => void setDayTask(kid.id, day, task.id, !isDone)}
+                            className={`chunky flex items-center gap-1 rounded-xl border-4 border-ink/15 px-3 py-2 font-display text-sm font-extrabold ${
+                              isDone ? "bg-leaf text-leaf-foreground" : "bg-card"
+                            }`}
+                          >
+                            <Check className="size-5" /> {isDone ? "Hecha" : "No hecha"}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+            <p className="mt-4 text-sm font-bold text-muted-foreground">
+              Al marcar o desmarcar, los Doblones se ajustan solos: en esta semana tocan al cofre
+              y en semanas pasadas al botín de {kid.name}.
+            </p>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MapaTesoro() {
+  const { kids, tasks, data, setWeekApproval } = useCaptain();
+  const now = new Date();
+  const [kidId, setKidId] = useState<string | null>(null);
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [extraDraft, setExtraDraft] = useState<Record<string, string>>({});
+
+  const kid = kids.find((k) => k.id === kidId) ?? kids[0];
+  const p = kid ? data.progress[kid.id] : undefined;
+  const weeks = monthMapWeeks(year, month);
+  const today = new Date().toISOString().slice(0, 10);
+
+  function moveMonth(delta: number) {
+    const d = new Date(Date.UTC(year, month + delta, 1));
+    setYear(d.getUTCFullYear());
+    setMonth(d.getUTCMonth());
+  }
+
+  if (!kid || !p) {
+    return (
+      <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+        <h2 className="font-display text-2xl font-extrabold">Mapa del Tesoro</h2>
+        <p className="mt-3 font-bold text-muted-foreground">
+          Da de alta un grumete para revisar su mapa del tesoro mensual.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+        <div className="flex flex-wrap items-center gap-2">
+          {kids.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              onClick={() => setKidId(k.id)}
+              className={`chunky flex items-center gap-2 rounded-2xl border-4 px-4 py-2 font-display text-lg font-extrabold ${
+                kid.id === k.id ? "border-primary bg-primary/15" : "border-ink/15 bg-secondary"
+              }`}
+            >
+              <span className="text-2xl">
+                {k.avatar.startsWith("data:") ? (
+                  <img src={k.avatar} alt="" className="size-7 rounded-full object-cover" />
+                ) : (
+                  k.avatar
+                )}
+              </span>
+              {k.name}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            aria-label="Mes anterior"
+            onClick={() => moveMonth(-1)}
+            className="chunky rounded-xl border-4 border-ink/15 bg-secondary p-2"
+          >
+            <ChevronLeft className="size-6" />
+          </button>
+          <h2 className="font-display text-2xl font-extrabold capitalize">
+            {new Date(Date.UTC(year, month, 1)).toLocaleDateString("es-ES", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h2>
+          <button
+            type="button"
+            aria-label="Mes siguiente"
+            onClick={() => moveMonth(1)}
+            className="chunky rounded-xl border-4 border-ink/15 bg-secondary p-2"
+          >
+            <ChevronRight className="size-6" />
+          </button>
+        </div>
+        <p className="mt-2 text-sm font-bold text-muted-foreground">
+          Cada semana del mapa se cumple sola al alcanzar el {WEEKLY_GOAL_PCT}% de las tareas
+          (días 1-7, 8-14, 15-21 y 22-28). Si se queda corta, apruébala indicando tareas extra.
+        </p>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        {weeks.map((w) => {
+          const st = mapWeekStats(p, tasks.length, w, today);
+          const ok = weekFulfilled(p, st, w.key);
+          const approved = p.mapApprovals[w.key];
+          const draft = extraDraft[w.key] ?? "";
+          const rango = `${w.days[0]!.slice(8)}–${w.days[6]!.slice(8)} ${new Date(
+            `${w.days[0]!}T12:00:00`,
+          ).toLocaleDateString("es-ES", { month: "short" })}`;
+          return (
+            <section
+              key={w.key}
+              className={`rounded-3xl border-4 p-6 float-card ${
+                ok ? "border-leaf/60 bg-leaf/10" : "border-ink/20 bg-card/95"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-xl font-extrabold">
+                  Semana {w.index + 1}
+                  <span className="ml-2 text-sm font-extrabold text-muted-foreground">{rango}</span>
+                </h3>
+                <span
+                  className={`rounded-xl border-4 px-3 py-1 font-display text-sm font-extrabold ${
+                    ok ? "border-leaf bg-leaf text-leaf-foreground" : "border-ink/15 bg-secondary"
+                  }`}
+                >
+                  {st.pct >= WEEKLY_GOAL_PCT
+                    ? "Objetivo cumplido"
+                    : approved
+                      ? "Aprobada por el Rey"
+                      : "Pendiente"}
+                </span>
+              </div>
+              <div className="mt-3 h-4 overflow-hidden rounded-full border-2 border-ink/20 bg-secondary">
+                <div
+                  className="h-full rounded-full bg-gold transition-all duration-500"
+                  style={{ width: `${Math.min(100, st.pct)}%` }}
+                />
+              </div>
+              <p className="mt-2 font-display text-sm font-extrabold text-muted-foreground">
+                {st.done} de {st.expected} tareas · {st.pct}%
+              </p>
+
+              {approved && (
+                <div className="mt-3 rounded-2xl border-4 border-ink/15 bg-secondary p-3">
+                  <p className="font-display text-sm font-extrabold">Tareas extra indicadas:</p>
+                  <p className="mt-1 text-sm font-bold whitespace-pre-line">{approved}</p>
+                </div>
+              )}
+
+              {!ok && (
+                <div className="mt-4">
+                  <textarea
+                    value={draft}
+                    onChange={(e) =>
+                      setExtraDraft((prev) => ({ ...prev, [w.key]: e.target.value }))
+                    }
+                    placeholder="Tareas extra para aprobar la semana (ej: ayudar en el garaje, leer 3 días…)"
+                    rows={2}
+                    className="w-full rounded-2xl border-4 border-ink/15 bg-background p-3 font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void setWeekApproval(kid.id, w.key, draft.trim() || null).then(() =>
+                        setExtraDraft((prev) => ({ ...prev, [w.key]: "" })),
+                      )
+                    }
+                    className="chunky mt-2 rounded-2xl border-4 border-ink/20 bg-primary px-4 py-2 font-display font-extrabold text-primary-foreground"
+                  >
+                    <Check className="mr-1 inline size-5" /> Aprobar objetivo
+                  </button>
+                </div>
+              )}
+              {approved && (
+                <button
+                  type="button"
+                  onClick={() => void setWeekApproval(kid.id, w.key, null)}
+                  className="chunky mt-3 rounded-2xl border-4 border-ink/15 bg-secondary px-4 py-2 font-display text-sm font-extrabold"
+                >
+                  Retirar aprobación
+                </button>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

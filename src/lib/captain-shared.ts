@@ -25,7 +25,10 @@ export type KidProgress = {
   dayKey: string;
   tasksDone: string[];
   redeemedToday: number;
-  mapStamps: number;
+  /** Semanas del mapa aprobadas por el Rey Pirata: clave de semana -> tareas extra indicadas. */
+  mapApprovals: Record<string, string>;
+  /** Historial: día (YYYY-MM-DD) -> ids de tareas completadas. */
+  history: Record<string, string[]>;
 };
 
 /** Doblones disponibles esta semana en el cofre. */
@@ -73,6 +76,12 @@ export function todayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Clave de semana (lunes-domingo) para un día "YYYY-MM-DD". */
+export function weekKeyOfDay(day: string) {
+  const [y, m, d] = day.split("-").map(Number);
+  return weekKey(new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1)));
+}
+
 export function weekKey(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const day = d.getUTCDay() || 7;
@@ -91,19 +100,23 @@ export function newProgress(): KidProgress {
     dayKey: todayKey(),
     tasksDone: [],
     redeemedToday: 0,
-    mapStamps: 0,
+    mapApprovals: {},
+    history: {},
   };
 }
 
 /** Applies the weekly (Mon–Sun) / daily resets and migrates old saves. */
-export function refreshProgress(p: KidProgress & { balance?: number }): KidProgress {
+export function refreshProgress(p: KidProgress & { balance?: number; mapStamps?: number }): KidProgress {
   // Migración de partidas antiguas: el saldo acumulado pasa al botín.
   let next: KidProgress = {
     ...p,
     booty: p.booty ?? p.balance ?? 0,
     redeemedWeek: p.redeemedWeek ?? 0,
+    mapApprovals: p.mapApprovals ?? {},
+    history: p.history ?? {},
   };
   delete (next as { balance?: number }).balance;
+  delete (next as { mapStamps?: number }).mapStamps;
   if (next.weekKey !== weekKey()) {
     // Al empezar la semana, el sobrante no canjeado pasa al botín.
     next = {
@@ -114,9 +127,57 @@ export function refreshProgress(p: KidProgress & { balance?: number }): KidProgr
       redeemedWeek: 0,
     };
   }
-  if (next.dayKey !== todayKey())
-    next = { ...next, dayKey: todayKey(), tasksDone: [], redeemedToday: 0 };
+  if (next.dayKey !== todayKey()) {
+    // Guarda el día que termina en el historial antes de reiniciar.
+    const history = { ...next.history };
+    if (next.tasksDone.length > 0) history[next.dayKey] = next.tasksDone;
+    next = {
+      ...next,
+      history,
+      dayKey: todayKey(),
+      tasksDone: history[todayKey()] ?? [],
+      redeemedToday: 0,
+    };
+  }
   return next;
+}
+
+/** Tareas completadas en un día concreto. */
+export function doneOnDay(p: KidProgress, day: string): string[] {
+  if (day === p.dayKey) return p.tasksDone;
+  return p.history?.[day] ?? [];
+}
+
+/** Objetivo semanal del mapa: porcentaje de tareas hechas para cumplir. */
+export const WEEKLY_GOAL_PCT = 85;
+
+export type MapWeek = { index: number; key: string; days: string[] };
+
+/** Las 4 semanas del mes del mapa: días 1-7, 8-14, 15-21 y 22-28. */
+export function monthMapWeeks(year: number, month: number): MapWeek[] {
+  const mm = String(month + 1).padStart(2, "0");
+  return [0, 1, 2, 3].map((i) => ({
+    index: i,
+    key: `${year}-${mm}-S${i + 1}`,
+    days: Array.from(
+      { length: 7 },
+      (_, d) => `${year}-${mm}-${String(i * 7 + d + 1).padStart(2, "0")}`,
+    ),
+  }));
+}
+
+/** Progreso de una semana del mapa: tareas hechas vs. esperadas (solo días transcurridos). */
+export function mapWeekStats(p: KidProgress, taskCount: number, week: MapWeek, today: string) {
+  const elapsedDays = week.days.filter((d) => d <= today).length;
+  const expected = elapsedDays * taskCount;
+  const done = week.days.reduce((n, d) => n + doneOnDay(p, d).length, 0);
+  const pct = expected > 0 ? Math.round((done / expected) * 100) : 0;
+  return { done, expected, pct, elapsedDays };
+}
+
+/** Una semana del mapa se cumple alcanzando el objetivo o si el Rey Pirata la aprueba. */
+export function weekFulfilled(p: KidProgress, stats: { pct: number }, weekKey: string) {
+  return stats.pct >= WEEKLY_GOAL_PCT || weekKey in (p.mapApprovals ?? {});
 }
 
 export function emptyData(): PublicData {

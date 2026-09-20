@@ -8,3 +8,5 @@
 - [x] Datos en el servidor con PostgreSQL (fallback en memoria sin DATABASE_URL)
 - [x] App instalable en Android (manifest, iconos, botón "Instalar")
 - [x] Dockerfile, docker-compose y guía DESPLIEGUE.md para Easypanel
+- [x] Estadísticas: calendario mensual editable por día (Rey Pirata)
+- [x] Mapa del tesoro: cofres semanales con 85% objetivo, aprobación del Rey Pirata (sección "Mapa del Tesoro")

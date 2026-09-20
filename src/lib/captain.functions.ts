@@ -5,8 +5,10 @@ import {
   DAILY_REDEEM_LIMIT,
   WEEKLY_LIMIT,
   chestAvailable,
+  doneOnDay,
   newProgress,
   refreshProgress,
+  weekKeyOfDay,
   type DayBlock,
   type Kid,
   type KidProgress,
@@ -150,7 +152,7 @@ export const addKid = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.kids = [...s.kids, kid];
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 export const updateKid = createServerFn({ method: "POST" })
@@ -161,7 +163,7 @@ export const updateKid = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.kids = s.kids.map((k) => (k.id === data.id ? { ...k, ...data.patch } : k));
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 export const removeKid = createServerFn({ method: "POST" })
@@ -173,7 +175,7 @@ export const removeKid = createServerFn({ method: "POST" })
       s.kids = s.kids.filter((k) => k.id !== data.id);
       delete s.progress[data.id];
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 /* --------------------------- admin: tasks -------------------------- */
@@ -189,7 +191,7 @@ export const addTask = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.tasks = [...s.tasks, task];
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 export const updateTask = createServerFn({ method: "POST" })
@@ -200,7 +202,7 @@ export const updateTask = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.tasks = s.tasks.map((t) => (t.id === data.id ? { ...t, ...data.patch } : t));
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 export const removeTask = createServerFn({ method: "POST" })
@@ -211,7 +213,7 @@ export const removeTask = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.tasks = s.tasks.filter((t) => t.id !== data.id);
     });
-    return snapshotFrom(state);
+    return snapshotFrom(state, { kind: "admin" });
   });
 
 /* ----------------------------- kid actions ------------------------- */
@@ -302,22 +304,54 @@ export const redeem = createServerFn({ method: "POST" })
     return { ok, reason, ...snapshotFrom(state, { kind: "kid", kidId }) };
   });
 
-export const stampWeek = createServerFn({ method: "POST" }).handler(async () => {
-  const kidId = await requireKid();
-  const { mutateState } = await import("./captain-db.server");
-  const { state } = await mutateState((s) => {
-    const p = progressOf(s, kidId);
-    s.progress[kidId] = { ...p, mapStamps: Math.min(4, p.mapStamps + 1) };
+/** El Rey Pirata marca/desmarca una tarea de un día pasado y ajusta los Doblones. */
+export const setDayTask = createServerFn({ method: "POST" })
+  .inputValidator((data: { kidId: string; day: string; taskId: string; done: boolean }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      const task = s.tasks.find((t) => t.id === data.taskId);
+      if (!task) return;
+      const p = refreshProgress(s.progress[data.kidId] ?? newProgress());
+      const cur = doneOnDay(p, data.day);
+      if (data.done === cur.includes(task.id)) {
+        s.progress[data.kidId] = p;
+        return;
+      }
+      const history = {
+        ...p.history,
+        [data.day]: data.done ? [...cur, task.id] : cur.filter((t) => t !== task.id),
+      };
+      // Semana actual: toca al cofre; semanas pasadas: al botín acumulado.
+      const sameWeek = weekKeyOfDay(data.day) === p.weekKey;
+      const next: KidProgress = { ...p, history };
+      if (data.done) {
+        if (sameWeek) next.weeklyEarned = Math.min(WEEKLY_LIMIT, p.weeklyEarned + task.value);
+        else next.booty = p.booty + task.value;
+      } else if (sameWeek) {
+        next.weeklyEarned = Math.max(p.redeemedWeek, p.weeklyEarned - task.value);
+      } else {
+        next.booty = Math.max(0, p.booty - task.value);
+      }
+      if (data.day === next.dayKey) next.tasksDone = history[data.day] ?? [];
+      s.progress[data.kidId] = next;
+    });
+    return snapshotFrom(state, { kind: "admin" });
   });
-  return snapshotFrom(state, { kind: "kid", kidId });
-});
 
-export const resetMap = createServerFn({ method: "POST" }).handler(async () => {
-  const kidId = await requireKid();
-  const { mutateState } = await import("./captain-db.server");
-  const { state } = await mutateState((s) => {
-    const p = progressOf(s, kidId);
-    s.progress[kidId] = { ...p, mapStamps: 0 };
+/** El Rey Pirata aprueba (o retira) el objetivo de una semana del mapa, indicando tareas extra. */
+export const setWeekApproval = createServerFn({ method: "POST" })
+  .inputValidator((data: { kidId: string; weekKey: string; extraTasks: string | null }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      const p = refreshProgress(s.progress[data.kidId] ?? newProgress());
+      const approvals = { ...p.mapApprovals };
+      if (data.extraTasks === null) delete approvals[data.weekKey];
+      else approvals[data.weekKey] = data.extraTasks;
+      s.progress[data.kidId] = { ...p, mapApprovals: approvals };
+    });
+    return snapshotFrom(state, { kind: "admin" });
   });
-  return snapshotFrom(state, { kind: "kid", kidId });
-});
