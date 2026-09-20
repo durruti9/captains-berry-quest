@@ -24,8 +24,9 @@ export const Route = createFileRoute("/api/public/health")({
           });
         } catch (error) {
           console.error(error);
+          const { databaseIssue } = await import("@/lib/captain-db.server");
           return Response.json(
-            { ok: false, database: "unavailable" },
+            { ok: false, database: "unavailable", issue: databaseIssue(error) },
             { status: 503 },
           );
         }

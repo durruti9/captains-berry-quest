@@ -18,3 +18,4 @@
 - [x] Orden manual de tareas dentro de Mañana, Tarde y Noche
 - [x] Recuperar el alta inicial del Rey Pirata y validar el flujo completo tras reconstrucciones
 - [x] Añadir una mejora de gamificación centrada en la constancia diaria
+- [x] Diagnóstico visible de conexión PostgreSQL durante el alta y en la comprobación de salud

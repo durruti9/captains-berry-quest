@@ -87,7 +87,8 @@ export const fetchSnapshot = createServerFn({ method: "GET" }).handler(async () 
 export const createAdmin = createServerFn({ method: "POST" })
   .validator((data: { user: string; password: string }) => data)
   .handler(async ({ data }) => {
-    const { mutateState, hashPassword, newSalt } = await import("./captain-db.server");
+    const { databaseIssue, databaseIssueMessage, mutateState, hashPassword, newSalt } =
+      await import("./captain-db.server");
     const user = data.user.trim();
     const fail = (reason: string) => ({
       ok: false as const,
@@ -98,17 +99,26 @@ export const createAdmin = createServerFn({ method: "POST" })
     if (user.length < 3) return fail("El usuario necesita al menos 3 letras.");
     if (data.password.length < 4) return fail("La contraseña necesita al menos 4 caracteres.");
 
-    const salt = newSalt();
-    const hash = await hashPassword(data.password, salt);
-    const { state, result } = await mutateState(async (s) => {
-      if (s.admin) {
-        const sameUser = user.toLowerCase() === s.admin.user.toLowerCase();
-        const existingHash = await hashPassword(data.password, s.admin.salt);
-        return sameUser && existingHash === s.admin.hash ? "existing-match" : "taken";
-      }
-      s.admin = { user, hash, salt };
-      return "created";
-    });
+    let state: import("./captain-db.server").StoredState;
+    let result: "created" | "existing-match" | "taken";
+    try {
+      const salt = newSalt();
+      const hash = await hashPassword(data.password, salt);
+      const mutation = await mutateState(async (s) => {
+        if (s.admin) {
+          const sameUser = user.toLowerCase() === s.admin.user.toLowerCase();
+          const existingHash = await hashPassword(data.password, s.admin.salt);
+          return sameUser && existingHash === s.admin.hash ? "existing-match" : "taken";
+        }
+        s.admin = { user, hash, salt };
+        return "created";
+      });
+      state = mutation.state;
+      result = mutation.result;
+    } catch (error) {
+      console.error("[storage] No se pudo crear el Rey Pirata.", error);
+      return fail(databaseIssueMessage(databaseIssue(error)));
+    }
 
     // The first request may have reached PostgreSQL even if the browser lost its
     // response during a rebuild. Repeating the same registration must therefore

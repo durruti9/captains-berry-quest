@@ -86,6 +86,9 @@ function Inicio() {
       setPassword("");
       setPassword2("");
       navigate({ to: "/rey" });
+    } catch (unexpectedError) {
+      console.error(unexpectedError);
+      setError("No se ha podido completar el alta. Comprueba PostgreSQL y vuelve a intentarlo.");
     } finally {
       setSubmitting(false);
     }
