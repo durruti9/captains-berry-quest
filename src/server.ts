@@ -9,6 +9,27 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
+const APP_VERSION = "captain-file-storage-v2";
+let startupLogged = false;
+
+async function logStartupOnce() {
+  if (startupLogged) return;
+  startupLogged = true;
+  try {
+    const port = process.env["PORT"] ?? "3000";
+    const host = process.env["HOST"] ?? "0.0.0.0";
+    console.info(`[start] ${APP_VERSION} · listening on ${host}:${port}`);
+    const { checkStorage } = await import("./lib/captain-db.server");
+    const storage = await checkStorage();
+    console.info(
+      `[start] datos en ${storage.dataDir} · permanente=${storage.mode === "persistent"}` +
+        (storage.fallbackReason ? ` · motivo=${storage.fallbackReason}` : ""),
+    );
+  } catch (error) {
+    console.error("[start] No se pudo comprobar la carpeta de datos al arrancar.", error);
+  }
+}
+
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
@@ -46,6 +67,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    void logStartupOnce();
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

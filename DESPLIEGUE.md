@@ -76,6 +76,30 @@ HTTPS es obligatorio para que Android permita instalar la web como aplicación.
 
 Si `persistent` aparece como `false`, no introduzcas datos reales: comprueba que el volumen esté montado exactamente en `/data`.
 
+## Si el servicio no llega a arrancar
+
+Si en los registros de Easypanel ves esto en bucle:
+
+```text
+Waiting for service iraitesoro_iraitesoro to start...
+Server closed successfully.
+```
+
+significa que el contenedor arranca el servidor y luego se apaga. Comprueba:
+
+1. Que reconstruyes con la imagen actual (sin caché). Las versiones antiguas incluían una comprobación de salud interna que reiniciaba el contenedor en bucle; la imagen actual ya no la lleva.
+2. Que en **Ports** el puerto interno es `3000`.
+3. Que el servicio tiene memoria suficiente (un cierre inmediato sin errores suele ser falta de memoria).
+
+Cuando arranca bien, el registro muestra una línea como:
+
+```text
+[start] captain-file-storage-v2 · listening on 0.0.0.0:3000
+[start] datos en /data · permanente=true
+```
+
+Si ahí pone `permanente=false`, el volumen no está montado en `/data`.
+
 ## Actualizar sin perder datos
 
 1. No borres el volumen montado en `/data`.
