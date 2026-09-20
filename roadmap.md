@@ -10,3 +10,4 @@
 - [x] Dockerfile, docker-compose y guía DESPLIEGUE.md para Easypanel
 - [x] Estadísticas: calendario mensual editable por día (Rey Pirata)
 - [x] Mapa del tesoro: cofres semanales con 85% objetivo, aprobación del Rey Pirata (sección "Mapa del Tesoro")
+- [x] Gran Mapa diario: 7 barras por semana, semáforo de progreso y fines de semana festivos

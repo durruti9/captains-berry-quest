@@ -3,6 +3,7 @@ import { Ship } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
 import { Confetti } from "@/components/Confetti";
+import { MapDayBars } from "@/components/MapDayBars";
 import { useCaptain } from "@/lib/captain-store";
 import {
   WEEKLY_GOAL_PCT,
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/mapa")({
   ),
 });
 
-const GOAL_LABEL = `Cumple al menos el ${WEEKLY_GOAL_PCT}% de las tareas de la semana`;
+const GOAL_LABEL = `Cumple al menos el ${WEEKLY_GOAL_PCT}% de lunes a viernes; el fin de semana es festivo`;
 
 function GranMapa() {
   const { progress, tasks } = useCaptain();
@@ -62,7 +63,6 @@ function GranMapa() {
             const st = stats[i]!;
             const ok = fulfilled[i]!;
             const extra = progress.mapApprovals[w.key];
-            const pct = Math.min(100, st.pct);
             return (
               <div
                 key={w.key}
@@ -73,31 +73,7 @@ function GranMapa() {
                 <span className="absolute top-3 left-4 font-display text-lg font-extrabold text-parchment-foreground">
                   Semana {i + 1}
                 </span>
-                <div className="mt-8 flex items-center gap-4">
-                  <span className="relative text-6xl leading-none" aria-hidden>
-                    <span
-                      className="absolute inset-x-0 bottom-0 overflow-hidden transition-all duration-500"
-                      style={{ height: `${pct}%` }}
-                    >
-                      <span className="block translate-y-[10%]">🧰</span>
-                    </span>
-                    <span className="opacity-30">🧰</span>
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-xl font-extrabold">
-                      {st.done} de {st.expected} tareas
-                    </p>
-                    <div className="mt-2 h-4 overflow-hidden rounded-full border-2 border-ink/20 bg-card">
-                      <div
-                        className="h-full rounded-full bg-gold transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 font-display text-sm font-extrabold text-muted-foreground">
-                      {st.pct}%
-                    </p>
-                  </div>
-                </div>
+                <MapDayBars days={st.days} />
                 {ok ? (
                   <div className="animate-stamp mt-4 flex justify-center">
                     <span className="rounded-xl border-4 border-primary px-4 py-1 font-display text-xl font-extrabold text-primary">

@@ -153,6 +153,16 @@ export const WEEKLY_GOAL_PCT = 85;
 
 export type MapWeek = { index: number; key: string; days: string[] };
 
+export type MapDayStats = {
+  day: string;
+  done: number;
+  expected: number;
+  pct: number;
+  elapsed: boolean;
+  weekend: boolean;
+  fulfilled: boolean;
+};
+
 /** Las 4 semanas del mes del mapa: días 1-7, 8-14, 15-21 y 22-28. */
 export function monthMapWeeks(year: number, month: number): MapWeek[] {
   const mm = String(month + 1).padStart(2, "0");
@@ -166,13 +176,59 @@ export function monthMapWeeks(year: number, month: number): MapWeek[] {
   }));
 }
 
-/** Progreso de una semana del mapa: tareas hechas vs. esperadas (solo días transcurridos). */
+/** Progreso diario del mapa. Los fines de semana siempre cumplen y no afectan a la media. */
+export function mapDayStats(
+  p: KidProgress,
+  taskIds: ReadonlySet<string>,
+  day: string,
+  today: string,
+): MapDayStats {
+  const date = new Date(`${day}T12:00:00Z`);
+  const weekday = date.getUTCDay();
+  const weekend = weekday === 0 || weekday === 6;
+  const elapsed = day <= today;
+  const done = new Set(doneOnDay(p, day).filter((id) => taskIds.has(id))).size;
+  const expected = taskIds.size;
+  const pct = expected > 0 ? Math.min(100, Math.round((done / expected) * 100)) : 0;
+  return {
+    day,
+    done,
+    expected,
+    pct,
+    elapsed,
+    weekend,
+    fulfilled: weekend || (elapsed && pct >= WEEKLY_GOAL_PCT),
+  };
+}
+
+/** Progreso semanal usando únicamente los días laborables transcurridos. */
 export function mapWeekStats(p: KidProgress, taskCount: number, week: MapWeek, today: string) {
-  const elapsedDays = week.days.filter((d) => d <= today).length;
+  const taskIds = new Set(Array.from({ length: taskCount }, (_, index) => String(index)));
+  const days = week.days.map((day) => {
+    const date = new Date(`${day}T12:00:00Z`);
+    const weekday = date.getUTCDay();
+    const weekend = weekday === 0 || weekday === 6;
+    const elapsed = day <= today;
+    const rawDone = doneOnDay(p, day).length;
+    const done = Math.min(taskCount, rawDone);
+    const pct = taskCount > 0 ? Math.min(100, Math.round((done / taskCount) * 100)) : 0;
+    return {
+      day,
+      done,
+      expected: taskCount,
+      pct,
+      elapsed,
+      weekend,
+      fulfilled: weekend || (elapsed && pct >= WEEKLY_GOAL_PCT),
+    } satisfies MapDayStats;
+  });
+  const countedDays = days.filter((day) => day.elapsed && !day.weekend);
+  const elapsedDays = countedDays.length;
   const expected = elapsedDays * taskCount;
-  const done = week.days.reduce((n, d) => n + doneOnDay(p, d).length, 0);
+  const done = countedDays.reduce((total, day) => total + day.done, 0);
   const pct = expected > 0 ? Math.round((done / expected) * 100) : 0;
-  return { done, expected, pct, elapsedDays };
+  void taskIds;
+  return { done, expected, pct, elapsedDays, days };
 }
 
 /** Una semana del mapa se cumple alcanzando el objetivo o si el Rey Pirata la aprueba. */
