@@ -44,6 +44,7 @@ export type PublicData = {
   kids: Kid[];
   tasks: Task[];
   progress: Record<string, KidProgress>;
+  storage: "postgres" | "memory";
 };
 
 export const BLOCK_LABELS: Record<DayBlock, string> = {
@@ -224,5 +225,5 @@ export function weekFulfilled(p: KidProgress, stats: { pct: number }, weekKey: s
 }
 
 export function emptyData(): PublicData {
-  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {} };
+  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {}, storage: "memory" };
 }

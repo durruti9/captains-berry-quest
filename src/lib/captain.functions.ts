@@ -50,6 +50,7 @@ function toPublic(state: import("./captain-db.server").StoredState): PublicData 
     kids: state.kids,
     tasks: state.tasks,
     progress,
+    storage: process.env["DATABASE_URL"] ? "postgres" : "memory",
   };
 }
 
@@ -174,6 +175,23 @@ export const removeKid = createServerFn({ method: "POST" })
     const { state } = await mutateState((s) => {
       s.kids = s.kids.filter((k) => k.id !== data.id);
       delete s.progress[data.id];
+    });
+    return snapshotFrom(state, { kind: "admin" });
+  });
+
+/** Borra únicamente el progreso de un grumete y conserva su perfil y la configuración. */
+export const resetKidProgress = createServerFn({ method: "POST" })
+  .inputValidator((data: { kidId: string; confirmation: string }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      const kid = s.kids.find((candidate) => candidate.id === data.kidId);
+      if (!kid) throw new Error("No se ha encontrado el grumete.");
+      if (data.confirmation.trim() !== kid.name) {
+        throw new Error("El nombre de confirmación no coincide.");
+      }
+      s.progress[data.kidId] = newProgress();
     });
     return snapshotFrom(state, { kind: "admin" });
   });
