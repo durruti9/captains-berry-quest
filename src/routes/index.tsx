@@ -31,6 +31,7 @@ function Inicio() {
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [askingAdmin, setAskingAdmin] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!ready) return <div className="sea-bg min-h-screen" />;
 
@@ -62,12 +63,19 @@ function Inicio() {
     if (password.length < 4) return setError("La contraseña necesita al menos 4 caracteres.");
     if (password !== password2) return setError("Las contraseñas no coinciden.");
     setError(null);
-    const res = await createAdmin(user, password);
-    if (!res.ok) return setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
-    setError(null);
-    setPassword("");
-    setPassword2("");
-    navigate({ to: "/rey" });
+    setSubmitting(true);
+    try {
+      const res = await createAdmin(user, password);
+      if (!res.ok) {
+        setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
+        return;
+      }
+      setPassword("");
+      setPassword2("");
+      navigate({ to: "/rey" });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function entrarAdmin() {
@@ -121,9 +129,10 @@ function Inicio() {
           <button
             type="button"
             onClick={() => void registrar()}
+            disabled={submitting}
             className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
           >
-            Crear Rey Pirata
+            {submitting ? "Guardando…" : "Crear Rey Pirata"}
           </button>
         </section>
       ) : (

@@ -5,9 +5,14 @@ export const Route = createFileRoute("/api/public/health")({
     handlers: {
       GET: async () => {
         try {
-          const { readState } = await import("@/lib/captain-db.server");
+          const { readState, storageMode } = await import("@/lib/captain-db.server");
           await readState();
-          return Response.json({ ok: true, database: "connected" });
+          const mode = storageMode();
+          return Response.json({
+            ok: true,
+            database: mode === "postgres" ? "connected" : "temporary",
+            persistent: mode === "postgres",
+          });
         } catch (error) {
           console.error(error);
           return Response.json(

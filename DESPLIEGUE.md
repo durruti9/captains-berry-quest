@@ -130,7 +130,7 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
 4. Abre `https://TU-DOMINIO/api/public/health`. Antes de crear el Rey Pirata
    debe responder exactamente:
    ```json
-   {"ok":true,"database":"connected"}
+   {"ok":true,"database":"connected","persistent":true}
    ```
    Si devuelve un error 503, no continúes: la app reintentará la conexión, pero
    debes corregir `DATABASE_URL` o arrancar el servicio PostgreSQL.

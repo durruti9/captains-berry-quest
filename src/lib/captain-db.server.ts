@@ -16,6 +16,10 @@ export function emptyState(): StoredState {
   return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {} };
 }
 
+export function storageMode(): "postgres" | "memory" {
+  return process.env["DATABASE_URL"] ? "postgres" : "memory";
+}
+
 /* ------------------------------------------------------------------ */
 /* Storage: Postgres when DATABASE_URL is set, memory otherwise.        */
 /* ------------------------------------------------------------------ */
