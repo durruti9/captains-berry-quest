@@ -33,8 +33,9 @@ export function MapDayBars({ days }: { days: MapDayStats[] }) {
               />
             </div>
             {day.weekend ? (
-              <p className="mt-2 flex min-h-8 items-center justify-center gap-1 font-display text-xs font-extrabold text-gold-foreground">
-                <PartyPopper className="size-3 shrink-0" /> Festivo
+              <p className="mt-2 flex min-h-8 flex-col items-center justify-center font-display text-[10px] leading-tight font-extrabold text-gold-foreground sm:text-xs">
+                <PartyPopper className="size-3 shrink-0" />
+                <span>Festivo</span>
               </p>
             ) : (
               <p className="mt-2 min-h-8 font-display text-xs font-extrabold">
