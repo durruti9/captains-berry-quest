@@ -151,7 +151,11 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       try {
         const res = await api.createAdmin({ data: { user, password } });
         applySnapshot(res);
-        return { ok: res.ok, created: res.created, reason: res.reason };
+        return {
+          ok: res.ok,
+          created: "created" in res ? res.created : false,
+          reason: res.reason,
+        };
       } catch (error) {
         console.error(error);
         return {
@@ -165,9 +169,14 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   const loginAdmin = useCallback(
     async (user: string, password: string) => {
-      const res = await api.loginAdmin({ data: { user, password } });
-      if (res.ok) applySnapshot(res);
-      return res.ok;
+      try {
+        const res = await api.loginAdmin({ data: { user, password } });
+        if (res.ok) applySnapshot(res);
+        return res.ok;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
     },
     [applySnapshot],
   );

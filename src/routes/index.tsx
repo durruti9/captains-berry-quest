@@ -111,13 +111,13 @@ function Inicio() {
       </div>
 
       {!admin ? (
-          <form
-            className="w-full max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!submitting) void registrar();
-            }}
-          >
+        <form
+          className="w-full max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!submitting) void registrar();
+          }}
+        >
           <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
             <Crown className="size-8 text-gold" /> Da de alta al Rey Pirata
           </h2>
