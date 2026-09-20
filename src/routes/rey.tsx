@@ -26,6 +26,7 @@ import {
   weekKeyOfDay,
 } from "@/lib/captain-shared";
 import { TASK_ICON_NAMES, getTaskIcon } from "@/lib/task-icons";
+import { MapDayBars } from "@/components/MapDayBars";
 
 export const Route = createFileRoute("/rey")({
   head: () => ({
@@ -41,6 +42,8 @@ export const Route = createFileRoute("/rey")({
         property: "og:description",
         content: "Alta de grumetes y CRUD de tareas con iconos y valor en Doblones.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReyPirata,
@@ -676,14 +679,14 @@ function MapaTesoro() {
           </button>
         </div>
         <p className="mt-2 text-sm font-bold text-muted-foreground">
-          Cada semana del mapa se cumple sola al alcanzar el {WEEKLY_GOAL_PCT}% de las tareas
-          (días 1-7, 8-14, 15-21 y 22-28). Si se queda corta, apruébala indicando tareas extra.
+          Cada semana se cumple al alcanzar el {WEEKLY_GOAL_PCT}% de lunes a viernes. Sábados y
+          domingos son festivos, siempre cumplen y no afectan a la media.
         </p>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
         {weeks.map((w) => {
-          const st = mapWeekStats(p, tasks.length, w, today);
+          const st = mapWeekStats(p, tasks, w, today);
           const ok = weekFulfilled(p, st, w.key);
           const approved = p.mapApprovals[w.key];
           const draft = extraDraft[w.key] ?? "";
@@ -714,15 +717,7 @@ function MapaTesoro() {
                       : "Pendiente"}
                 </span>
               </div>
-              <div className="mt-3 h-4 overflow-hidden rounded-full border-2 border-ink/20 bg-secondary">
-                <div
-                  className="h-full rounded-full bg-gold transition-all duration-500"
-                  style={{ width: `${Math.min(100, st.pct)}%` }}
-                />
-              </div>
-              <p className="mt-2 font-display text-sm font-extrabold text-muted-foreground">
-                {st.done} de {st.expected} tareas · {st.pct}%
-              </p>
+              <MapDayBars days={st.days} />
 
               {approved && (
                 <div className="mt-3 rounded-2xl border-4 border-ink/15 bg-secondary p-3">
