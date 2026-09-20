@@ -218,7 +218,40 @@ export const updateTask = createServerFn({ method: "POST" })
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
     const { state } = await mutateState((s) => {
-      s.tasks = s.tasks.map((t) => (t.id === data.id ? { ...t, ...data.patch } : t));
+      const current = s.tasks.find((task) => task.id === data.id);
+      if (!current) return;
+      const updated = { ...current, ...data.patch };
+      if (data.patch.block && data.patch.block !== current.block) {
+        // Al cambiar de franja, queda al final de la nueva para poder ordenarla allí.
+        s.tasks = [...s.tasks.filter((task) => task.id !== data.id), updated];
+      } else {
+        s.tasks = s.tasks.map((task) => (task.id === data.id ? updated : task));
+      }
+    });
+    return snapshotFrom(state, { kind: "admin" });
+  });
+
+export const moveTask = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; direction: "up" | "down" }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      const currentIndex = s.tasks.findIndex((task) => task.id === data.id);
+      if (currentIndex < 0) throw new Error("No se ha encontrado la tarea.");
+      const current = s.tasks[currentIndex];
+      if (!current) return;
+      const step = data.direction === "up" ? -1 : 1;
+      let swapIndex = currentIndex + step;
+      while (swapIndex >= 0 && swapIndex < s.tasks.length) {
+        if (s.tasks[swapIndex]?.block === current.block) break;
+        swapIndex += step;
+      }
+      if (swapIndex < 0 || swapIndex >= s.tasks.length) return;
+      const sibling = s.tasks[swapIndex];
+      if (!sibling) return;
+      s.tasks[currentIndex] = sibling;
+      s.tasks[swapIndex] = current;
     });
     return snapshotFrom(state, { kind: "admin" });
   });

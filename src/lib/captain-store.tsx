@@ -60,6 +60,7 @@ type Ctx = {
   resetKidProgress: (kidId: string, confirmation: string) => Promise<void>;
   addTask: (task: Omit<Task, "id">) => Promise<void>;
   updateTask: (id: string, patch: Partial<Omit<Task, "id">>) => Promise<void>;
+  moveTask: (id: string, direction: "up" | "down") => Promise<void>;
   removeTask: (id: string) => Promise<void>;
   // kid actions
   toggleTask: (taskId: string) => Promise<"earned" | "undone" | "limit">;
@@ -225,6 +226,13 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     [applySnapshot, session],
   );
 
+  const moveTask = useCallback(
+    async (id: string, direction: "up" | "down") => {
+      applySnapshot(await api.moveTask({ data: { id, direction } }));
+    },
+    [applySnapshot],
+  );
+
   const removeTask = useCallback(
     async (id: string) => {
       applySnapshot({ ...(await api.removeTask({ data: { id } })), session });
@@ -288,6 +296,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       resetKidProgress,
       addTask,
       updateTask,
+      moveTask,
       removeTask,
       toggleTask,
       redeem,
@@ -312,6 +321,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       resetKidProgress,
       addTask,
       updateTask,
+      moveTask,
       removeTask,
       toggleTask,
       redeem,
