@@ -52,7 +52,12 @@ type Ctx = {
   createAdmin: (
     user: string,
     password: string,
-  ) => Promise<{ ok: boolean; created?: boolean; reason?: string | undefined }>;
+  ) => Promise<{
+    ok: boolean;
+    created?: boolean;
+    existing?: boolean;
+    reason?: string | undefined;
+  }>;
   loginAdmin: (user: string, password: string) => Promise<boolean>;
   enterKid: (kidId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -154,6 +159,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
         return {
           ok: res.ok,
           created: "created" in res ? res.created : false,
+          existing: "existing" in res ? res.existing : false,
           reason: res.reason,
         };
       } catch (error) {

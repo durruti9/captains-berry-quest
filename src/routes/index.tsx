@@ -77,7 +77,7 @@ function Inicio() {
       const res = await createAdmin(user, password);
       if (!res.ok) {
         setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
-        if (res.created) {
+        if (res.created || res.existing) {
           setPassword2("");
           setAskingAdmin(true);
         }
