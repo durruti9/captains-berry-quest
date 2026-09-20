@@ -76,7 +76,15 @@ type Ctx = {
   ) => Promise<void>;
 };
 
-const CaptainContext = createContext<Ctx | null>(null);
+// El contexto se guarda en globalThis para que, si Vite recarga en caliente
+// el módulo (HMR) y crea una copia duplicada, proveedor y consumidores sigan
+// compartiendo el mismo contexto.
+const globalStore = globalThis as unknown as {
+  __captainContext?: React.Context<Ctx | null>;
+};
+const CaptainContext: React.Context<Ctx | null> =
+  globalStore.__captainContext ?? createContext<Ctx | null>(null);
+globalStore.__captainContext = CaptainContext;
 
 export function CaptainProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PublicData>(emptyData);
