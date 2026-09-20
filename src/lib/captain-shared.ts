@@ -149,6 +149,39 @@ export function doneOnDay(p: KidProgress, day: string): string[] {
   return p.history?.[day] ?? [];
 }
 
+function addUtcDays(day: string, amount: number) {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Días laborables consecutivos con al menos el 85% de las tareas terminadas. */
+export function navigationStreak(
+  p: KidProgress,
+  tasks: readonly Task[],
+  today = todayKey(),
+) {
+  if (tasks.length === 0) return 0;
+  const taskIds = new Set(tasks.map((task) => task.id));
+  let cursor = today;
+  let streak = 0;
+  let checkedWorkdays = 0;
+
+  // Si hoy todavía no está completo, la racha vigente se calcula hasta ayer.
+  const todayStats = mapDayStats(p, taskIds, today, today);
+  if (!todayStats.weekend && todayStats.pct < WEEKLY_GOAL_PCT) cursor = addUtcDays(cursor, -1);
+
+  while (checkedWorkdays < 366) {
+    const stats = mapDayStats(p, taskIds, cursor, today);
+    cursor = addUtcDays(cursor, -1);
+    if (stats.weekend) continue;
+    checkedWorkdays += 1;
+    if (stats.pct < WEEKLY_GOAL_PCT) break;
+    streak += 1;
+  }
+  return streak;
+}
+
 /** Objetivo semanal del mapa: porcentaje de tareas hechas para cumplir. */
 export const WEEKLY_GOAL_PCT = 85;
 

@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Check, Sunrise, Sun, Moon, Sparkles } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
+import { Confetti } from "@/components/Confetti";
 import { getTaskIcon } from "@/lib/task-icons";
 import { useCaptain, BLOCK_LABELS, type DayBlock } from "@/lib/captain-store";
+import { navigationStreak } from "@/lib/captain-shared";
 
 export const Route = createFileRoute("/barco")({
   head: () => ({
@@ -39,20 +41,37 @@ function MiBarco() {
   const { progress, tasks, toggleTask } = useCaptain();
   const [celebrating, setCelebrating] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [dayComplete, setDayComplete] = useState(false);
 
   const total = tasks.length;
   const done = tasks.filter((t) => progress.tasksDone.includes(t.id)).length;
+  const streak = navigationStreak(progress, tasks);
+
+  function celebrateCompletedDay() {
+    setDayComplete(true);
+    setMessage("¡Guardias completas! El barco está listo para zarpar");
+    setTimeout(() => {
+      setMessage(null);
+      setDayComplete(false);
+    }, 3200);
+  }
 
   async function handle(id: string, value: number) {
     const result = await toggleTask(id);
     if (result === "earned") {
       setCelebrating(id);
-      setMessage(`¡+${value} Doblones, grumete!`);
+      const completesDay = total > 0 && done + 1 === total;
+      if (completesDay) celebrateCompletedDay();
+      else setMessage(`¡+${value} Doblones, grumete!`);
       setTimeout(() => setCelebrating(null), 900);
-      setTimeout(() => setMessage(null), 1600);
+      if (!completesDay) setTimeout(() => setMessage(null), 1600);
     } else if (result === "limit") {
-      setMessage("¡Ya llegaste al límite de la semana! 🏴‍☠️");
-      setTimeout(() => setMessage(null), 2200);
+      const completesDay = total > 0 && done + 1 === total;
+      if (completesDay) celebrateCompletedDay();
+      else {
+        setMessage("¡Ya llegaste al límite de la semana! 🏴‍☠️");
+        setTimeout(() => setMessage(null), 2200);
+      }
     }
   }
 
@@ -73,7 +92,15 @@ function MiBarco() {
             style={{ width: `${total ? (done / total) * 100 : 0}%` }}
           />
         </div>
+        <p className="mt-3 flex items-center gap-2 font-display font-extrabold text-coral">
+          <span aria-hidden="true">🔥</span>
+          {streak === 0
+            ? "Completa el 85% para iniciar tu racha"
+            : `${streak} ${streak === 1 ? "día" : "días"} de racha navegando`}
+        </p>
       </div>
+
+      {dayComplete && <Confetti pieces={60} />}
 
       {total === 0 && (
         <p className="rounded-3xl border-4 border-ink/15 bg-card/95 p-6 text-center font-display text-xl font-extrabold">

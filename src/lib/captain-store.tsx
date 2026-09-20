@@ -49,7 +49,10 @@ type Ctx = {
   weeklyRemaining: number;
   dailyRedeemRemaining: number;
   // auth
-  createAdmin: (user: string, password: string) => Promise<{ ok: boolean; reason?: string | undefined }>;
+  createAdmin: (
+    user: string,
+    password: string,
+  ) => Promise<{ ok: boolean; created?: boolean; reason?: string | undefined }>;
   loginAdmin: (user: string, password: string) => Promise<boolean>;
   enterKid: (kidId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -148,7 +151,11 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       try {
         const res = await api.createAdmin({ data: { user, password } });
         applySnapshot(res);
-        return { ok: res.ok, reason: res.reason };
+        return {
+          ok: res.ok,
+          created: "created" in res ? res.created : false,
+          reason: res.reason,
+        };
       } catch (error) {
         console.error(error);
         return {
@@ -162,9 +169,14 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   const loginAdmin = useCallback(
     async (user: string, password: string) => {
-      const res = await api.loginAdmin({ data: { user, password } });
-      if (res.ok) applySnapshot(res);
-      return res.ok;
+      try {
+        const res = await api.loginAdmin({ data: { user, password } });
+        if (res.ok) applySnapshot(res);
+        return res.ok;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
     },
     [applySnapshot],
   );

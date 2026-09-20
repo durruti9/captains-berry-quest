@@ -16,5 +16,5 @@
 - [x] Reconexión automática a PostgreSQL y bloqueo seguro si la base de datos no responde
 - [x] Comprobación de salud para reconstrucciones seguras en Easypanel
 - [x] Orden manual de tareas dentro de Mañana, Tarde y Noche
-- [ ] Recuperar el alta inicial del Rey Pirata y validar el flujo completo tras reconstrucciones
-- [ ] Añadir una mejora de gamificación centrada en la constancia diaria
+- [x] Recuperar el alta inicial del Rey Pirata y validar el flujo completo tras reconstrucciones
+- [x] Añadir una mejora de gamificación centrada en la constancia diaria

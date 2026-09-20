@@ -128,12 +128,12 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    - Build: `bun install --frozen-lockfile` + `bun run build` con `SELF_HOST=1`.
    - Runtime: arranca `node .output/server/index.mjs` en el puerto 3000.
 4. Abre `https://TU-DOMINIO/api/public/health`. Antes de crear el Rey Pirata
-   debe responder exactamente:
+   debe responder con este contenido:
    ```json
-   {"ok":true,"database":"connected","persistent":true}
+   {"ok":true,"database":"connected","persistent":true,"session":"ready"}
    ```
-   Si devuelve un error 503, no continúes: la app reintentará la conexión, pero
-   debes corregir `DATABASE_URL` o arrancar el servicio PostgreSQL.
+    Si devuelve un error 503, no continúes: corrige `DATABASE_URL`, arranca
+    PostgreSQL o comprueba que `SESSION_SECRET` tenga al menos 32 caracteres.
 
 ### Paso 6 — Primer arranque (configurar la app)
 

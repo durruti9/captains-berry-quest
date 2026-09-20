@@ -20,8 +20,14 @@ import {
 type SessionData = { kind?: "admin" | "kid"; kidId?: string };
 
 function sessionConfig() {
-  const password =
-    process.env["SESSION_SECRET"] ?? "diario-del-capitan-dev-secret-change-me-please-0001";
+  const configured = process.env["SESSION_SECRET"];
+  if (process.env["REQUIRE_DATABASE"] === "1" && !configured) {
+    throw new Error("SESSION_SECRET es obligatoria en este despliegue.");
+  }
+  const password = configured ?? "diario-del-capitan-dev-secret-change-me-please-0001";
+  if (password.length < 32) {
+    throw new Error("SESSION_SECRET debe tener al menos 32 caracteres.");
+  }
   return { password, name: "capitan-session", maxAge: 60 * 60 * 24 * 60 };
 }
 
@@ -67,7 +73,7 @@ export const fetchSnapshot = createServerFn({ method: "GET" }).handler(async () 
 /* ------------------------------ auth ------------------------------- */
 
 export const createAdmin = createServerFn({ method: "POST" })
-  .inputValidator((data: { user: string; password: string }) => data)
+  .validator((data: { user: string; password: string }) => data)
   .handler(async ({ data }) => {
     const { mutateState, hashPassword, newSalt } = await import("./captain-db.server");
     const user = data.user.trim();
@@ -91,9 +97,22 @@ export const createAdmin = createServerFn({ method: "POST" })
       s.admin = { user, hash, salt };
     });
     if (taken) return fail("El Rey Pirata ya está dado de alta.");
-    await writeSession({ kind: "admin" });
+    try {
+      await writeSession({ kind: "admin" });
+    } catch (error) {
+      console.error("[session] El Rey Pirata se guardó, pero no se pudo abrir la sesión.", error);
+      return {
+        ok: false as const,
+        created: true as const,
+        reason:
+          "El Rey Pirata se ha guardado, pero no se pudo abrir la sesión. Entra ahora con el usuario y la contraseña que acabas de crear.",
+        data: toPublic(state),
+        session: null as Session,
+      };
+    }
     return {
       ok: true as const,
+      created: true as const,
       reason: undefined,
       data: toPublic(state),
       session: { kind: "admin" } as Session,
@@ -101,7 +120,7 @@ export const createAdmin = createServerFn({ method: "POST" })
   });
 
 export const loginAdmin = createServerFn({ method: "POST" })
-  .inputValidator((data: { user: string; password: string }) => data)
+  .validator((data: { user: string; password: string }) => data)
   .handler(async ({ data }) => {
     const { readState, hashPassword } = await import("./captain-db.server");
     const state = await readState();
@@ -116,7 +135,7 @@ export const loginAdmin = createServerFn({ method: "POST" })
   });
 
 export const enterKid = createServerFn({ method: "POST" })
-  .inputValidator((data: { kidId: string }) => data)
+  .validator((data: { kidId: string }) => data)
   .handler(async ({ data }) => {
     const { readState } = await import("./captain-db.server");
     const state = await readState();
@@ -145,7 +164,7 @@ async function requireKid() {
 /* --------------------------- admin: kids --------------------------- */
 
 export const addKid = createServerFn({ method: "POST" })
-  .inputValidator((data: { name: string; avatar: string }) => data)
+  .validator((data: { name: string; avatar: string }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState, uid } = await import("./captain-db.server");
@@ -157,7 +176,7 @@ export const addKid = createServerFn({ method: "POST" })
   });
 
 export const updateKid = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; patch: Partial<Omit<Kid, "id">> }) => data)
+  .validator((data: { id: string; patch: Partial<Omit<Kid, "id">> }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -168,7 +187,7 @@ export const updateKid = createServerFn({ method: "POST" })
   });
 
 export const removeKid = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -181,7 +200,7 @@ export const removeKid = createServerFn({ method: "POST" })
 
 /** Borra únicamente el progreso de un grumete y conserva su perfil y la configuración. */
 export const resetKidProgress = createServerFn({ method: "POST" })
-  .inputValidator((data: { kidId: string; confirmation: string }) => data)
+  .validator((data: { kidId: string; confirmation: string }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -201,7 +220,7 @@ export const resetKidProgress = createServerFn({ method: "POST" })
 type TaskInput = { label: string; value: number; icon: string; block: DayBlock };
 
 export const addTask = createServerFn({ method: "POST" })
-  .inputValidator((data: TaskInput) => data)
+  .validator((data: TaskInput) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState, uid } = await import("./captain-db.server");
@@ -213,7 +232,7 @@ export const addTask = createServerFn({ method: "POST" })
   });
 
 export const updateTask = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; patch: Partial<TaskInput> }) => data)
+  .validator((data: { id: string; patch: Partial<TaskInput> }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -232,7 +251,7 @@ export const updateTask = createServerFn({ method: "POST" })
   });
 
 export const moveTask = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; direction: "up" | "down" }) => data)
+  .validator((data: { id: string; direction: "up" | "down" }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -257,7 +276,7 @@ export const moveTask = createServerFn({ method: "POST" })
   });
 
 export const removeTask = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -278,7 +297,7 @@ function snapshotFrom(state: import("./captain-db.server").StoredState, session?
 }
 
 export const toggleTask = createServerFn({ method: "POST" })
-  .inputValidator((data: { taskId: string }) => data)
+  .validator((data: { taskId: string }) => data)
   .handler(async ({ data }) => {
     const kidId = await requireKid();
     const { mutateState } = await import("./captain-db.server");
@@ -317,7 +336,7 @@ export const toggleTask = createServerFn({ method: "POST" })
   });
 
 export const redeem = createServerFn({ method: "POST" })
-  .inputValidator((data: { amount: number }) => data)
+  .validator((data: { amount: number }) => data)
   .handler(async ({ data }) => {
     const kidId = await requireKid();
     const { mutateState } = await import("./captain-db.server");
@@ -357,7 +376,7 @@ export const redeem = createServerFn({ method: "POST" })
 
 /** El Rey Pirata marca/desmarca una tarea de un día pasado y ajusta los Doblones. */
 export const setDayTask = createServerFn({ method: "POST" })
-  .inputValidator((data: { kidId: string; day: string; taskId: string; done: boolean }) => data)
+  .validator((data: { kidId: string; day: string; taskId: string; done: boolean }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
@@ -393,7 +412,7 @@ export const setDayTask = createServerFn({ method: "POST" })
 
 /** El Rey Pirata aprueba (o retira) el objetivo de una semana del mapa, indicando tareas extra. */
 export const setWeekApproval = createServerFn({ method: "POST" })
-  .inputValidator((data: { kidId: string; weekKey: string; extraTasks: string | null }) => data)
+  .validator((data: { kidId: string; weekKey: string; extraTasks: string | null }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
     const { mutateState } = await import("./captain-db.server");
