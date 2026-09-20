@@ -42,6 +42,44 @@ const runtimeStorage = (runtimeGlobal.__captainRuntimeStorage ??= {
 const CONNECT_ATTEMPTS = 6;
 const CONNECT_RETRY_MS = 1_000;
 
+export type DatabaseIssue = "database_missing" | "credentials_rejected" | "host_unreachable" | "unknown";
+
+export function databaseIssue(error: unknown): DatabaseIssue {
+  const candidate = error as { code?: unknown; cause?: unknown; message?: unknown };
+  const cause = candidate?.cause as { code?: unknown; message?: unknown } | undefined;
+  const code = String(cause?.code ?? candidate?.code ?? "");
+  const message = String(cause?.message ?? candidate?.message ?? "").toLowerCase();
+
+  if (code === "3D000" || message.includes("database") && message.includes("does not exist")) {
+    return "database_missing";
+  }
+  if (code === "28P01" || message.includes("password authentication failed")) {
+    return "credentials_rejected";
+  }
+  if (
+    ["ENOTFOUND", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN"].includes(code) ||
+    message.includes("getaddrinfo") ||
+    message.includes("connect timeout") ||
+    message.includes("connection refused")
+  ) {
+    return "host_unreachable";
+  }
+  return "unknown";
+}
+
+export function databaseIssueMessage(issue: DatabaseIssue): string {
+  if (issue === "database_missing") {
+    return "La base indicada en DATABASE_URL no existe. Copia la URL de conexión interna completa de PostgreSQL en Easypanel.";
+  }
+  if (issue === "credentials_rejected") {
+    return "PostgreSQL ha rechazado el usuario o la contraseña de DATABASE_URL. Vuelve a copiar la URL interna desde Easypanel.";
+  }
+  if (issue === "host_unreachable") {
+    return "No se encuentra el servicio PostgreSQL. Comprueba que DATABASE_URL usa el host interno de Easypanel y que PostgreSQL está iniciado.";
+  }
+  return "No se puede conectar con PostgreSQL. Revisa la URL de conexión interna en Easypanel.";
+}
+
 function normalizeState(value: unknown): StoredState {
   if (!value || typeof value !== "object") return emptyState();
   const candidate = value as Partial<StoredState>;
@@ -99,10 +137,7 @@ async function connectPostgres(url: string): Promise<Sql> {
   }
 
   console.error("[storage] No se pudo conectar con PostgreSQL.", lastError);
-  throw new Error(
-    "No se puede conectar con PostgreSQL. Revisa DATABASE_URL y que el servicio de base de datos esté iniciado.",
-    { cause: lastError },
-  );
+  throw new Error(databaseIssueMessage(databaseIssue(lastError)), { cause: lastError });
 }
 
 async function getSql(): Promise<Sql | null> {

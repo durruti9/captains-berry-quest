@@ -81,6 +81,11 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    > En Easypanel los servicios del mismo proyecto se ven entre sí por su nombre
    > interno (`db`), así que la URL usa ese nombre, no `localhost`.
 
+   > **Importante:** el usuario y el nombre de la base pueden ser distintos. No
+   > reconstruyas la URL suponiendo que son iguales: usa el botón de copiar de
+   > Easypanel. Por ejemplo, con usuario `irai`, host `iraitesoro_postgres` y base
+   > `iraitesoro`, la URL debe terminar en `/iraitesoro`, no en `/irai`.
+
 ### Paso 3 — Añadir la app
 
 1. Dentro del proyecto, **+ Service** → **App**.
@@ -132,8 +137,12 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    ```json
    {"ok":true,"database":"connected","persistent":true,"session":"ready"}
    ```
-    Si devuelve un error 503, no continúes: corrige `DATABASE_URL`, arranca
-    PostgreSQL o comprueba que `SESSION_SECRET` tenga al menos 32 caracteres.
+    Si devuelve un error 503, no continúes. El campo `issue` orienta la causa:
+    - `database_missing`: la URL termina en un nombre de base que no existe.
+    - `credentials_rejected`: usuario o contraseña incorrectos.
+    - `host_unreachable`: host interno incorrecto o PostgreSQL detenido.
+    Corrige `DATABASE_URL` copiando la URL interna completa, o comprueba que
+    `SESSION_SECRET` tenga al menos 32 caracteres.
 
 ### Paso 6 — Primer arranque (configurar la app)
 
