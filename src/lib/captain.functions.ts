@@ -4,6 +4,7 @@ import { useSession } from "@tanstack/react-start/server";
 import {
   DAILY_REDEEM_LIMIT,
   WEEKLY_LIMIT,
+  chestAvailable,
   newProgress,
   refreshProgress,
   type DayBlock,
