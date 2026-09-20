@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, getRequestProtocol } from "@tanstack/react-start";
 import { useSession } from "@tanstack/react-start/server";
 
 import {
@@ -28,7 +28,19 @@ function sessionConfig() {
   if (password.length < 32) {
     throw new Error("SESSION_SECRET debe tener al menos 32 caracteres.");
   }
-  return { password, name: "capitan-session", maxAge: 60 * 60 * 24 * 60 };
+  return {
+    password,
+    name: "capitan-session",
+    maxAge: 60 * 60 * 24 * 60,
+    cookie: {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax" as const,
+      // Easypanel terminates HTTPS at its proxy. TanStack understands
+      // X-Forwarded-Proto here, while direct/local HTTP needs a non-secure cookie.
+      secure: getRequestProtocol() === "https",
+    },
+  };
 }
 
 async function readSession(): Promise<Session> {
