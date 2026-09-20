@@ -271,31 +271,42 @@ function Tareas() {
 
       <section className="rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
         <h2 className="font-display text-2xl font-extrabold">Tareas actuales ({tasks.length})</h2>
-        <ul className="mt-4 space-y-3">
-          {tasks.map((task) =>
-            editing === task.id ? (
-              <TaskEditor
-                key={task.id}
-                task={task}
-                onCancel={() => setEditing(null)}
-                onSave={(patch) => {
-                  void updateTask(task.id, patch);
-                  setEditing(null);
-                }}
-              />
-            ) : (
-              <TaskRow
-                key={task.id}
-                task={task}
-                onEdit={() => setEditing(task.id)}
-                onDelete={() => void removeTask(task.id)}
-              />
-            ),
-          )}
-          {tasks.length === 0 && (
-            <p className="font-bold text-muted-foreground">No hay tareas configuradas.</p>
-          )}
-        </ul>
+        {tasks.length === 0 && (
+          <p className="mt-4 font-bold text-muted-foreground">No hay tareas configuradas.</p>
+        )}
+        {BLOCKS.map((block) => {
+          const blockTasks = tasks.filter((t) => t.block === block);
+          if (blockTasks.length === 0) return null;
+          return (
+            <section key={block} className="mt-5">
+              <h3 className="font-display text-lg font-extrabold text-muted-foreground">
+                {BLOCK_LABELS[block]} ({blockTasks.length})
+              </h3>
+              <ul className="mt-2 space-y-3">
+                {blockTasks.map((task) =>
+                  editing === task.id ? (
+                    <TaskEditor
+                      key={task.id}
+                      task={task}
+                      onCancel={() => setEditing(null)}
+                      onSave={(patch) => {
+                        void updateTask(task.id, patch);
+                        setEditing(null);
+                      }}
+                    />
+                  ) : (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      onEdit={() => setEditing(task.id)}
+                      onDelete={() => void removeTask(task.id)}
+                    />
+                  ),
+                )}
+              </ul>
+            </section>
+          );
+        })}
       </section>
     </div>
   );
