@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Lock, RotateCcw } from "lucide-react";
+import { Ship } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
 import { Confetti } from "@/components/Confetti";
 import { useCaptain } from "@/lib/captain-store";
+import {
+  WEEKLY_GOAL_PCT,
+  mapWeekStats,
+  monthMapWeeks,
+  weekFulfilled,
+} from "@/lib/captain-shared";
 
 export const Route = createFileRoute("/mapa")({
   head: () => ({
@@ -13,12 +18,12 @@ export const Route = createFileRoute("/mapa")({
       {
         name: "description",
         content:
-          "Mapa del tesoro mensual con 4 semanas por sellar para conseguir el premio legendario.",
+          "Mapa del tesoro mensual: llena los cofres de las 4 semanas con tus tareas y encuentra el tesoro legendario.",
       },
       { property: "og:title", content: "El Gran Mapa — El Diario del Capitán" },
       {
         property: "og:description",
-        content: "Sella las 4 semanas del mes y reclama el tesoro legendario.",
+        content: "Llena los cofres de las 4 semanas del mes y reclama el tesoro legendario.",
       },
     ],
   }),
@@ -29,58 +34,87 @@ export const Route = createFileRoute("/mapa")({
   ),
 });
 
-const PIECES = ["🏝️", "⚓", "🧭", "💎"];
+const GOAL_LABEL = `Cumple al menos el ${WEEKLY_GOAL_PCT}% de las tareas de la semana`;
 
 function GranMapa() {
-  const { progress, stampWeek, resetMap } = useCaptain();
-  const [askingPin, setAskingPin] = useState(false);
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const complete = progress.mapStamps >= 4;
-
-  function confirm() {
-    if (pin.trim() !== "1234") {
-      setError("Código incorrecto. Pídeselo al Capitán (Papi).");
-      return;
-    }
-    void stampWeek();
-    setAskingPin(false);
-    setPin("");
-    setError(null);
-  }
+  const { progress, tasks } = useCaptain();
+  const now = new Date();
+  const weeks = monthMapWeeks(now.getFullYear(), now.getMonth());
+  const today = now.toISOString().slice(0, 10);
+  const stats = weeks.map((w) => mapWeekStats(progress, tasks.length, w, today));
+  const fulfilled = weeks.map((w, i) => weekFulfilled(progress, stats[i]!, w.key));
+  const complete = fulfilled.every(Boolean);
 
   return (
-    <PirateShell title="El Gran Mapa" subtitle="4 semanas selladas = figura de premio">
+    <PirateShell
+      title="El Gran Mapa"
+      subtitle="Llena los cofres de las 4 semanas = tesoro legendario"
+    >
       {complete && <Confetti />}
 
       <div className="parchment-bg rounded-[2rem] border-8 border-ink/25 p-6 float-card">
         <h2 className="text-center font-display text-3xl font-extrabold text-parchment-foreground">
           Mapa del Tesoro Mensual
         </h2>
+        <p className="mt-2 text-center font-bold text-parchment-foreground/70">{GOAL_LABEL}</p>
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {[0, 1, 2, 3].map((i) => {
-            const filled = i < progress.mapStamps;
+          {weeks.map((w, i) => {
+            const st = stats[i]!;
+            const ok = fulfilled[i]!;
+            const extra = progress.mapApprovals[w.key];
+            const pct = Math.min(100, st.pct);
             return (
               <div
-                key={i}
-                className={`relative flex h-52 items-center justify-center rounded-3xl border-4 border-dashed border-ink/40 ${
-                  filled ? "border-solid bg-gold/40" : "bg-card/40"
+                key={w.key}
+                className={`relative rounded-3xl border-4 border-dashed border-ink/40 p-5 ${
+                  ok ? "border-solid bg-gold/40" : "bg-card/40"
                 }`}
               >
                 <span className="absolute top-3 left-4 font-display text-lg font-extrabold text-parchment-foreground">
                   Semana {i + 1}
                 </span>
-                {filled ? (
-                  <div className="animate-stamp flex flex-col items-center">
-                    <span className="text-6xl">{PIECES[i]}</span>
-                    <span className="mt-2 rounded-xl border-4 border-primary px-4 py-1 font-display text-xl font-extrabold text-primary">
-                      CONSEGUIDO
+                <div className="mt-8 flex items-center gap-4">
+                  <span className="relative text-6xl leading-none" aria-hidden>
+                    <span
+                      className="absolute inset-x-0 bottom-0 overflow-hidden transition-all duration-500"
+                      style={{ height: `${pct}%` }}
+                    >
+                      <span className="block translate-y-[10%]">🧰</span>
+                    </span>
+                    <span className="opacity-30">🧰</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-xl font-extrabold">
+                      {st.done} de {st.expected} tareas
+                    </p>
+                    <div className="mt-2 h-4 overflow-hidden rounded-full border-2 border-ink/20 bg-card">
+                      <div
+                        className="h-full rounded-full bg-gold transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 font-display text-sm font-extrabold text-muted-foreground">
+                      {st.pct}%
+                    </p>
+                  </div>
+                </div>
+                {ok ? (
+                  <div className="animate-stamp mt-4 flex justify-center">
+                    <span className="rounded-xl border-4 border-primary px-4 py-1 font-display text-xl font-extrabold text-primary">
+                      OBJETIVO CUMPLIDO
                     </span>
                   </div>
+                ) : extra ? (
+                  <div className="mt-4 rounded-2xl border-4 border-ink/15 bg-card/95 p-3">
+                    <p className="font-display text-sm font-extrabold">
+                      Tareas extra indicadas por el Rey Pirata:
+                    </p>
+                    <p className="mt-1 text-sm font-bold whitespace-pre-line">{extra}</p>
+                  </div>
                 ) : (
-                  <span className="font-display text-xl font-extrabold text-muted-foreground">
-                    Casilla vacía
-                  </span>
+                  <p className="mt-4 text-center font-display text-sm font-extrabold text-muted-foreground">
+                    {st.expected === 0 ? "Aún sin tareas" : `Te faltan tareas esta semana`}
+                  </p>
                 )}
               </div>
             );
@@ -88,7 +122,7 @@ function GranMapa() {
         </div>
       </div>
 
-      {complete ? (
+      {complete && (
         <div className="mt-6 rounded-3xl border-4 border-ink/20 bg-card/95 p-8 text-center float-card">
           <p className="animate-wobble font-display text-4xl font-extrabold text-primary lg:text-5xl">
             ¡HAS ENCONTRADO EL TESORO LEGENDARIO!
@@ -96,60 +130,16 @@ function GranMapa() {
           <p className="mt-4 font-display text-2xl font-extrabold">
             Reclama tu figura al Capitán (Papi) 🏴‍☠️
           </p>
-          <button
-            type="button"
-            onClick={() => void resetMap()}
-            className="chunky mt-6 inline-flex items-center gap-2 rounded-2xl border-4 border-ink/15 bg-secondary px-6 py-3 font-display text-lg font-extrabold"
-          >
-            <RotateCcw className="size-6" /> Empezar un mes nuevo
-          </button>
         </div>
-      ) : (
-        <div className="mt-6 text-center">
-          {askingPin ? (
-            <div className="mx-auto max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
-              <p className="font-display text-xl font-extrabold">
-                Código de Papi para sellar la semana
-              </p>
-              <input
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="••••"
-                className="mt-4 w-full rounded-2xl border-4 border-ink/15 bg-background py-3 text-center font-display text-3xl font-extrabold tracking-[0.5em]"
-              />
-              {error && <p className="mt-2 font-bold text-destructive">{error}</p>}
-              <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAskingPin(false);
-                    setPin("");
-                    setError(null);
-                  }}
-                  className="chunky flex-1 rounded-2xl border-4 border-ink/15 bg-secondary py-3 font-display text-lg font-extrabold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={confirm}
-                  className="chunky flex-1 rounded-2xl border-4 border-ink/20 bg-primary py-3 font-display text-lg font-extrabold text-primary-foreground"
-                >
-                  Sellar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAskingPin(true)}
-              className="chunky inline-flex items-center gap-3 rounded-3xl border-4 border-ink/20 bg-primary px-10 py-5 font-display text-2xl font-extrabold text-primary-foreground"
-            >
-              <Lock className="size-7" /> Completar Semana
-            </button>
-          )}
+      )}
+
+      {!complete && (
+        <div className="mt-6 flex items-center justify-center gap-3 text-center">
+          <Ship className="size-6 text-primary" />
+          <p className="font-display text-lg font-extrabold text-muted-foreground">
+            Si una semana se te resiste, el Rey Pirata puede aprobarla con tareas extra desde su
+            Zona.
+          </p>
         </div>
       )}
     </PirateShell>
