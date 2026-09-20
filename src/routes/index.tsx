@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Inicio() {
-  const { ready, loadError, retryLoad, admin, kids, createAdmin, loginAdmin, enterKid } = useCaptain();
+  const { ready, loadError, retryLoad, data, admin, kids, createAdmin, loginAdmin, enterKid } = useCaptain();
   const navigate = useNavigate();
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
