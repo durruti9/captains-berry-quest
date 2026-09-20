@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, Anchor, Crown, Lock, RefreshCw } from "lucide-react";
+import { AlertTriangle, Anchor, Crown, LoaderCircle, Lock, RefreshCw } from "lucide-react";
 import { useCaptain } from "@/lib/captain-store";
 import { Button } from "@/components/ui/button";
 
@@ -33,7 +33,16 @@ function Inicio() {
   const [askingAdmin, setAskingAdmin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!ready) return <div className="sea-bg min-h-screen" />;
+  if (!ready) {
+    return (
+      <div className="sea-bg flex min-h-screen items-center justify-center p-6">
+        <div className="text-center text-sea-foreground" role="status">
+          <LoaderCircle className="mx-auto size-12 animate-spin" />
+          <p className="mt-3 font-display text-xl font-extrabold">Preparando el barco…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (
@@ -68,6 +77,10 @@ function Inicio() {
       const res = await createAdmin(user, password);
       if (!res.ok) {
         setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
+        if (res.created) {
+          setPassword2("");
+          setAskingAdmin(true);
+        }
         return;
       }
       setPassword("");
@@ -98,7 +111,13 @@ function Inicio() {
       </div>
 
       {!admin ? (
-        <section className="w-full max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card">
+          <form
+            className="w-full max-w-md rounded-3xl border-4 border-ink/20 bg-card/95 p-6 float-card"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!submitting) void registrar();
+            }}
+          >
           <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
             <Crown className="size-8 text-gold" /> Da de alta al Rey Pirata
           </h2>
@@ -126,15 +145,15 @@ function Inicio() {
             className="mt-3 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 font-display text-xl font-extrabold"
           />
           {error && <p className="mt-3 font-bold text-destructive">{error}</p>}
-          <button
-            type="button"
-            onClick={() => void registrar()}
+          <Button
+            type="submit"
             disabled={submitting}
             className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
           >
+            {submitting && <LoaderCircle className="size-6 animate-spin" />}
             {submitting ? "Guardando…" : "Crear Rey Pirata"}
-          </button>
-        </section>
+          </Button>
+        </form>
       ) : (
         <>
           <p className="mb-6 font-display text-2xl font-extrabold text-sea-foreground">

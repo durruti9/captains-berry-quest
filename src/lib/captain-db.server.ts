@@ -33,6 +33,25 @@ let storageLogged = false;
 const CONNECT_ATTEMPTS = 6;
 const CONNECT_RETRY_MS = 1_000;
 
+function normalizeState(value: unknown): StoredState {
+  if (!value || typeof value !== "object") return emptyState();
+  const candidate = value as Partial<StoredState>;
+  const admin =
+    candidate.admin &&
+    typeof candidate.admin.user === "string" &&
+    typeof candidate.admin.hash === "string" &&
+    typeof candidate.admin.salt === "string"
+      ? candidate.admin
+      : null;
+  return {
+    admin,
+    kids: Array.isArray(candidate.kids) ? candidate.kids : [],
+    tasks: Array.isArray(candidate.tasks) ? candidate.tasks : DEFAULT_TASKS,
+    progress:
+      candidate.progress && typeof candidate.progress === "object" ? candidate.progress : {},
+  };
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -107,7 +126,7 @@ export async function readState(): Promise<StoredState> {
   if (!sql) return (memoryState ??= emptyState());
   const rows = await sql<{ data: StoredState }[]>`
     select data from captain_state where id = 1`;
-  return rows[0]?.data ?? emptyState();
+  return normalizeState(rows[0]?.data);
 }
 
 /** Reads, mutates and persists the state atomically. */
@@ -125,7 +144,7 @@ export async function mutateState<T>(
   return sql.begin(async (tx) => {
     const rows = await tx<{ data: StoredState }[]>`
       select data from captain_state where id = 1 for update`;
-    const state = rows[0]?.data ?? emptyState();
+    const state = normalizeState(rows[0]?.data);
     const result = await mutator(state);
     await tx`
       insert into captain_state (id, data, updated_at)

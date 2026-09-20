@@ -20,8 +20,14 @@ import {
 type SessionData = { kind?: "admin" | "kid"; kidId?: string };
 
 function sessionConfig() {
-  const password =
-    process.env["SESSION_SECRET"] ?? "diario-del-capitan-dev-secret-change-me-please-0001";
+  const configured = process.env["SESSION_SECRET"];
+  if (process.env["REQUIRE_DATABASE"] === "1" && !configured) {
+    throw new Error("SESSION_SECRET es obligatoria en este despliegue.");
+  }
+  const password = configured ?? "diario-del-capitan-dev-secret-change-me-please-0001";
+  if (password.length < 32) {
+    throw new Error("SESSION_SECRET debe tener al menos 32 caracteres.");
+  }
   return { password, name: "capitan-session", maxAge: 60 * 60 * 24 * 60 };
 }
 
@@ -91,9 +97,22 @@ export const createAdmin = createServerFn({ method: "POST" })
       s.admin = { user, hash, salt };
     });
     if (taken) return fail("El Rey Pirata ya está dado de alta.");
-    await writeSession({ kind: "admin" });
+    try {
+      await writeSession({ kind: "admin" });
+    } catch (error) {
+      console.error("[session] El Rey Pirata se guardó, pero no se pudo abrir la sesión.", error);
+      return {
+        ok: false as const,
+        created: true as const,
+        reason:
+          "El Rey Pirata se ha guardado, pero no se pudo abrir la sesión. Entra ahora con el usuario y la contraseña que acabas de crear.",
+        data: toPublic(state),
+        session: null as Session,
+      };
+    }
     return {
       ok: true as const,
+      created: true as const,
       reason: undefined,
       data: toPublic(state),
       session: { kind: "admin" } as Session,
