@@ -44,28 +44,7 @@ function Inicio() {
     );
   }
 
-  if (loadError) {
-    return (
-      <div className="sea-bg flex min-h-screen items-center justify-center p-6">
-        <section className="w-full max-w-lg rounded-3xl border-4 border-destructive/50 bg-card/95 p-7 text-center float-card">
-          <AlertTriangle className="mx-auto size-14 text-destructive" />
-          <h1 className="mt-3 font-display text-3xl font-extrabold">El barco no encuentra su puerto</h1>
-          <p className="mt-3 font-bold text-muted-foreground">{loadError}</p>
-          <p className="mt-2 text-sm font-bold text-muted-foreground">
-            No se permitirá crear datos hasta que el guardado permanente esté disponible.
-          </p>
-          <Button
-            type="button"
-            size="lg"
-            onClick={retryLoad}
-            className="mt-6 h-auto rounded-2xl border-4 border-ink/20 px-6 py-3 font-display text-lg font-extrabold"
-          >
-            <RefreshCw className="size-5" /> Volver a comprobar
-          </Button>
-        </section>
-      </div>
-    );
-  }
+  if (loadError) return <StorageUnavailable message={loadError} onRetry={retryLoad} />;
 
   async function registrar() {
     if (user.trim().length < 3) return setError("El usuario necesita al menos 3 letras.");
@@ -112,6 +91,15 @@ function Inicio() {
           El Diario del Capitán
         </h1>
       </div>
+
+      {data.storage === "temporary" && (
+        <div className="mb-5 flex w-full max-w-md items-start gap-3 rounded-2xl border-4 border-gold/60 bg-card/95 p-4">
+          <AlertTriangle className="mt-0.5 size-6 shrink-0 text-gold-foreground" />
+          <p className="font-bold text-muted-foreground">
+            Puedes continuar, pero monta un volumen en /data para conservar los datos al reconstruir.
+          </p>
+        </div>
+      )}
 
       {!admin ? (
         <form
@@ -242,6 +230,21 @@ function Inicio() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function StorageUnavailable({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="sea-bg flex min-h-screen items-center justify-center p-6">
+      <section className="w-full max-w-lg rounded-3xl border-4 border-destructive/50 bg-card/95 p-7 text-center float-card">
+        <AlertTriangle className="mx-auto size-14 text-destructive" />
+        <h1 className="mt-3 font-display text-3xl font-extrabold">El barco no puede guardar datos</h1>
+        <p className="mt-3 font-bold text-muted-foreground">{message}</p>
+        <Button type="button" size="lg" onClick={onRetry} className="mt-6 h-auto rounded-2xl border-4 border-ink/20 px-6 py-3 font-display text-lg font-extrabold">
+          <RefreshCw className="size-5" /> Volver a comprobar
+        </Button>
+      </section>
     </div>
   );
 }

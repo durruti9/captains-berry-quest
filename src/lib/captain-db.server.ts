@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import {
@@ -22,23 +22,56 @@ export function emptyState(): StoredState {
 type RuntimeStorage = {
   readyPromise: Promise<void> | null;
   queue: Promise<void>;
+  locationPromise: Promise<StorageLocation> | null;
+};
+
+type StorageLocation = {
+  dataDir: string;
+  mode: "persistent" | "temporary";
+  fallbackReason: string | null;
 };
 
 const runtimeGlobal = globalThis as unknown as { __captainFileStorage?: RuntimeStorage };
 const runtimeStorage = (runtimeGlobal.__captainFileStorage ??= {
   readyPromise: null,
   queue: Promise.resolve(),
+  locationPromise: null,
 });
 
-const dataDir = process.env["CAPTAIN_DATA_DIR"]?.trim() ||
-  (process.env["NODE_ENV"] === "production" ? "/data" : "/tmp/diario-del-capitan-dev");
-const statePath = join(dataDir, "captain-state.json");
-const secretPath = join(dataDir, "session-secret.txt");
+async function resolveStorageLocation(): Promise<StorageLocation> {
+  if (!runtimeStorage.locationPromise) {
+    runtimeStorage.locationPromise = (async () => {
+      const configured = process.env["CAPTAIN_DATA_DIR"]?.trim();
+      const candidates = [
+        configured,
+        "/data",
+        "/app/data",
+        process.env["NODE_ENV"] === "production"
+          ? "/tmp/diario-del-capitan"
+          : "/tmp/diario-del-capitan-dev",
+      ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+      let firstFailure: string | null = null;
 
-export function storageMode(): "persistent" | "temporary" {
-  return dataDir === "/data" || Boolean(process.env["CAPTAIN_DATA_DIR"])
-    ? "persistent"
-    : "temporary";
+      for (const candidate of candidates) {
+        try {
+          await mkdir(candidate, { recursive: true });
+          const probe = join(candidate, `.write-test-${crypto.randomUUID()}`);
+          await writeFile(probe, "ok", { encoding: "utf8", mode: 0o600 });
+          await unlink(probe);
+          const persistent = candidate === configured || candidate === "/data";
+          return {
+            dataDir: candidate,
+            mode: persistent ? "persistent" : "temporary",
+            fallbackReason: persistent ? null : firstFailure ?? "El volumen /data no está disponible.",
+          };
+        } catch (error) {
+          firstFailure ??= error instanceof Error ? error.message : "No se puede escribir en /data.";
+        }
+      }
+      throw new Error("No existe ninguna carpeta disponible para guardar los datos.");
+    })();
+  }
+  return runtimeStorage.locationPromise;
 }
 
 function normalizeState(value: unknown): StoredState {
@@ -77,7 +110,9 @@ async function atomicWrite(path: string, contents: string) {
 async function ensureStorage() {
   if (!runtimeStorage.readyPromise) {
     runtimeStorage.readyPromise = (async () => {
-      await mkdir(dataDir, { recursive: true });
+      const { dataDir } = await resolveStorageLocation();
+      const statePath = join(dataDir, "captain-state.json");
+      const secretPath = join(dataDir, "session-secret.txt");
       try {
         await readFile(statePath, "utf8");
       } catch (error) {
@@ -102,6 +137,8 @@ async function ensureStorage() {
 async function readStateFile(): Promise<StoredState> {
   await ensureStorage();
   try {
+    const { dataDir } = await resolveStorageLocation();
+    const statePath = join(dataDir, "captain-state.json");
     return normalizeState(JSON.parse(await readFile(statePath, "utf8")));
   } catch (error) {
     throw storageError(error);
@@ -122,6 +159,8 @@ export async function mutateState<T>(
     const state = await readStateFile();
     const result = await mutator(state);
     try {
+      const { dataDir } = await resolveStorageLocation();
+      const statePath = join(dataDir, "captain-state.json");
       await atomicWrite(statePath, JSON.stringify(state, null, 2));
     } catch (error) {
       throw storageError(error);
@@ -137,6 +176,8 @@ export async function mutateState<T>(
 export async function getSessionSecret() {
   await ensureStorage();
   try {
+    const { dataDir } = await resolveStorageLocation();
+    const secretPath = join(dataDir, "session-secret.txt");
     const secret = (await readFile(secretPath, "utf8")).trim();
     if (secret.length < 32) throw new Error("La clave de sesión guardada no es válida.");
     return secret;
@@ -147,16 +188,16 @@ export async function getSessionSecret() {
 
 export async function checkStorage() {
   const state = await readState();
-  const probePath = join(dirname(statePath), `.health-${crypto.randomUUID()}`);
+  const location = await resolveStorageLocation();
+  const probePath = join(location.dataDir, `.health-${crypto.randomUUID()}`);
   try {
     await writeFile(probePath, "ok", "utf8");
     await rename(probePath, `${probePath}.done`);
-    const { unlink } = await import("node:fs/promises");
     await unlink(`${probePath}.done`);
   } catch (error) {
     throw storageError(error);
   }
-  return { mode: storageMode(), initialized: Boolean(state.admin) };
+  return { ...location, initialized: Boolean(state.admin) };
 }
 
 function toHex(buffer: ArrayBuffer) {

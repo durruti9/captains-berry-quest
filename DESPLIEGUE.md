@@ -55,22 +55,24 @@ HTTPS es obligatorio para que Android permita instalar la web como aplicación.
 
 ### 5. Primer despliegue
 
-1. Pulsa **Deploy/Rebuild** en la App.
-2. Espera a que aparezca como activa.
-3. Abre:
+1. Comprueba en **Source** que Easypanel usa el repositorio correcto y la rama `main`.
+2. Pulsa **Deploy/Rebuild** y selecciona **sin caché / clear build cache** si Easypanel ofrece esa opción.
+3. Espera a que aparezca como activa.
+4. Abre:
 
    ```text
    https://TU-DOMINIO/api/public/health
    ```
 
-4. Antes del alta debe responder de forma similar a:
+5. Antes del alta debe responder de forma similar a:
 
    ```json
-   {"ok":true,"storage":"ready","persistent":true,"initialized":false,"session":"ready"}
+   {"ok":true,"version":"captain-file-storage-v2","storage":"ready","persistent":true,"dataDir":"/data","fallbackReason":null,"initialized":false,"session":"ready"}
    ```
 
-5. Abre la página principal y crea el Rey Pirata.
-6. Después del alta, `initialized` pasará a `true`.
+6. Si aparece un 404 o no figura `captain-file-storage-v2`, Easypanel sigue ejecutando una imagen antigua: revisa repositorio/rama y reconstruye sin caché.
+7. Abre la página principal y crea el Rey Pirata.
+8. Después del alta, `initialized` pasará a `true`.
 
 Si `persistent` aparece como `false`, no introduzcas datos reales: comprueba que el volumen esté montado exactamente en `/data`.
 
