@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Anchor, Crown, Lock } from "lucide-react";
+import { AlertTriangle, Anchor, Crown, Lock, RefreshCw } from "lucide-react";
 import { useCaptain } from "@/lib/captain-store";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -23,26 +24,58 @@ export const Route = createFileRoute("/")({
 });
 
 function Inicio() {
-  const { ready, admin, kids, createAdmin, loginAdmin, enterKid } = useCaptain();
+  const { ready, loadError, retryLoad, admin, kids, createAdmin, loginAdmin, enterKid } = useCaptain();
   const navigate = useNavigate();
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [askingAdmin, setAskingAdmin] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!ready) return <div className="sea-bg min-h-screen" />;
+
+  if (loadError) {
+    return (
+      <div className="sea-bg flex min-h-screen items-center justify-center p-6">
+        <section className="w-full max-w-lg rounded-3xl border-4 border-destructive/50 bg-card/95 p-7 text-center float-card">
+          <AlertTriangle className="mx-auto size-14 text-destructive" />
+          <h1 className="mt-3 font-display text-3xl font-extrabold">El barco no encuentra su puerto</h1>
+          <p className="mt-3 font-bold text-muted-foreground">{loadError}</p>
+          <p className="mt-2 text-sm font-bold text-muted-foreground">
+            No se permitirá crear datos hasta que el guardado permanente esté disponible.
+          </p>
+          <Button
+            type="button"
+            size="lg"
+            onClick={retryLoad}
+            className="mt-6 h-auto rounded-2xl border-4 border-ink/20 px-6 py-3 font-display text-lg font-extrabold"
+          >
+            <RefreshCw className="size-5" /> Volver a comprobar
+          </Button>
+        </section>
+      </div>
+    );
+  }
 
   async function registrar() {
     if (user.trim().length < 3) return setError("El usuario necesita al menos 3 letras.");
     if (password.length < 4) return setError("La contraseña necesita al menos 4 caracteres.");
     if (password !== password2) return setError("Las contraseñas no coinciden.");
-    const res = await createAdmin(user, password);
-    if (!res.ok) return setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
     setError(null);
-    setPassword("");
-    setPassword2("");
-    navigate({ to: "/rey" });
+    setSubmitting(true);
+    try {
+      const res = await createAdmin(user, password);
+      if (!res.ok) {
+        setError(res.reason ?? "No se ha podido crear el Rey Pirata.");
+        return;
+      }
+      setPassword("");
+      setPassword2("");
+      navigate({ to: "/rey" });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function entrarAdmin() {
@@ -96,9 +129,10 @@ function Inicio() {
           <button
             type="button"
             onClick={() => void registrar()}
+            disabled={submitting}
             className="chunky mt-5 w-full rounded-2xl border-4 border-ink/20 bg-primary py-4 font-display text-2xl font-extrabold text-primary-foreground"
           >
-            Crear Rey Pirata
+            {submitting ? "Guardando…" : "Crear Rey Pirata"}
           </button>
         </section>
       ) : (

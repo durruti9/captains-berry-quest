@@ -16,6 +16,10 @@ export function emptyState(): StoredState {
   return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {} };
 }
 
+export function storageMode(): "postgres" | "memory" {
+  return process.env["DATABASE_URL"] ? "postgres" : "memory";
+}
+
 /* ------------------------------------------------------------------ */
 /* Storage: Postgres when DATABASE_URL is set, memory otherwise.        */
 /* ------------------------------------------------------------------ */
@@ -25,6 +29,53 @@ type Sql = import("postgres").Sql;
 let sqlPromise: Promise<Sql> | null = null;
 let memoryState: StoredState | null = null;
 let storageLogged = false;
+
+const CONNECT_ATTEMPTS = 6;
+const CONNECT_RETRY_MS = 1_000;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function connectPostgres(url: string): Promise<Sql> {
+  const { default: postgres } = await import("postgres");
+  const useSsl = process.env["DATABASE_SSL"] === "true";
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= CONNECT_ATTEMPTS; attempt += 1) {
+    const sql = postgres(url, {
+      max: 3,
+      connect_timeout: 10,
+      ...(useSsl ? { ssl: "require" as const } : {}),
+    });
+    try {
+      await sql`create table if not exists captain_state (
+        id int primary key,
+        data jsonb not null,
+        updated_at timestamptz not null default now()
+      )`;
+      await sql`
+        insert into captain_state (id, data, updated_at)
+        values (1, ${sql.json(emptyState() as never)}, now())
+        on conflict (id) do nothing`;
+      if (!storageLogged) {
+        console.info("[storage] PostgreSQL conectado; persistencia activa.");
+        storageLogged = true;
+      }
+      return sql;
+    } catch (error) {
+      lastError = error;
+      await sql.end({ timeout: 1 }).catch(() => undefined);
+      if (attempt < CONNECT_ATTEMPTS) await wait(CONNECT_RETRY_MS);
+    }
+  }
+
+  console.error("[storage] No se pudo conectar con PostgreSQL.", lastError);
+  throw new Error(
+    "No se puede conectar con PostgreSQL. Revisa DATABASE_URL y que el servicio de base de datos esté iniciado.",
+    { cause: lastError },
+  );
+}
 
 async function getSql(): Promise<Sql | null> {
   const url = process.env["DATABASE_URL"];
@@ -41,21 +92,12 @@ async function getSql(): Promise<Sql | null> {
     return null;
   }
   if (!sqlPromise) {
-    sqlPromise = (async () => {
-      const { default: postgres } = await import("postgres");
-      const useSsl = process.env["DATABASE_SSL"] === "true";
-      const sql = postgres(url, useSsl ? { max: 3, ssl: "require" } : { max: 3 });
-      await sql`create table if not exists captain_state (
-        id int primary key,
-        data jsonb not null,
-        updated_at timestamptz not null default now()
-      )`;
-      if (!storageLogged) {
-        console.info("[storage] PostgreSQL conectado; persistencia activa.");
-        storageLogged = true;
-      }
-      return sql;
-    })();
+    // Una promesa rechazada no debe quedar memorizada: el siguiente intento
+    // vuelve a conectar cuando PostgreSQL ya esté preparado.
+    sqlPromise = connectPostgres(url).catch((error) => {
+      sqlPromise = null;
+      throw error;
+    });
   }
   return sqlPromise;
 }

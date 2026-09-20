@@ -37,6 +37,8 @@ export {
 
 type Ctx = {
   ready: boolean;
+  loadError: string | null;
+  retryLoad: () => void;
   data: PublicData;
   session: Session;
   admin: { user: string } | null;
@@ -91,6 +93,8 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PublicData>(emptyData);
   const [session, setSession] = useState<Session>(null);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const applySnapshot = useCallback(
     (snap: { data: PublicData | null; session: Session }) => {
@@ -102,20 +106,30 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    setReady(false);
+    setLoadError(null);
     api
       .fetchSnapshot()
       .then((snap) => {
         if (!alive) return;
         applySnapshot(snap);
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (!alive) return;
+        console.error(error);
+        setLoadError(
+          "No se puede conectar con la base de datos. Comprueba PostgreSQL y DATABASE_URL en Easypanel.",
+        );
+      })
       .finally(() => {
         if (alive) setReady(true);
       });
     return () => {
       alive = false;
     };
-  }, [applySnapshot]);
+  }, [applySnapshot, loadAttempt]);
+
+  const retryLoad = useCallback(() => setLoadAttempt((attempt) => attempt + 1), []);
 
   const activeKidId = session?.kind === "kid" ? session.kidId : null;
   const activeKid = useMemo(
@@ -130,9 +144,17 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
 
   const createAdmin = useCallback(
     async (user: string, password: string) => {
-      const res = await api.createAdmin({ data: { user, password } });
-      applySnapshot(res);
-      return { ok: res.ok, reason: res.reason };
+      try {
+        const res = await api.createAdmin({ data: { user, password } });
+        applySnapshot(res);
+        return { ok: res.ok, reason: res.reason };
+      } catch (error) {
+        console.error(error);
+        return {
+          ok: false,
+          reason: "No se ha podido guardar. Comprueba la conexión con PostgreSQL e inténtalo de nuevo.",
+        };
+      }
     },
     [applySnapshot],
   );
@@ -245,6 +267,8 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       ready,
+      loadError,
+      retryLoad,
       data,
       session,
       admin: data.admin,
@@ -272,6 +296,8 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     }),
     [
       ready,
+      loadError,
+      retryLoad,
       data,
       session,
       activeKid,

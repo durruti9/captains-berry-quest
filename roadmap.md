@@ -13,3 +13,5 @@
 - [x] Gran Mapa diario: 7 barras por semana, semáforo de progreso y fines de semana festivos
 - [x] Persistencia protegida en Easypanel e indicador del almacenamiento
 - [x] Reinicio voluntario del progreso de un único grumete
+- [x] Reconexión automática a PostgreSQL y bloqueo seguro si la base de datos no responde
+- [x] Comprobación de salud para reconstrucciones seguras en Easypanel

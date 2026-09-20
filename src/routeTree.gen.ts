@@ -14,6 +14,7 @@ import { Route as BarcoRouteImport } from './routes/barco'
 import { Route as MapaRouteImport } from './routes/mapa'
 import { Route as ReyRouteImport } from './routes/rey'
 import { Route as TesoroRouteImport } from './routes/tesoro'
+import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const TesoroRoute = TesoroRouteImport.update({
   path: '/tesoro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
+  id: '/api/public/health',
+  path: '/api/public/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/mapa': typeof MapaRoute
   '/rey': typeof ReyRoute
   '/tesoro': typeof TesoroRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/mapa': typeof MapaRoute
   '/rey': typeof ReyRoute
   '/tesoro': typeof TesoroRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,22 @@ export interface FileRoutesById {
   '/mapa': typeof MapaRoute
   '/rey': typeof ReyRoute
   '/tesoro': typeof TesoroRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/barco' | '/mapa' | '/rey' | '/tesoro'
+  fullPaths:
+    '/' | '/barco' | '/mapa' | '/rey' | '/tesoro' | '/api/public/health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/barco' | '/mapa' | '/rey' | '/tesoro'
-  id: '__root__' | '/' | '/barco' | '/mapa' | '/rey' | '/tesoro'
+  to: '/' | '/barco' | '/mapa' | '/rey' | '/tesoro' | '/api/public/health'
+  id:
+    | '__root__'
+    | '/'
+    | '/barco'
+    | '/mapa'
+    | '/rey'
+    | '/tesoro'
+    | '/api/public/health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +94,7 @@ export interface RootRouteChildren {
   MapaRoute: typeof MapaRoute
   ReyRoute: typeof ReyRoute
   TesoroRoute: typeof TesoroRoute
+  ApiPublicHealthRoute: typeof ApiPublicHealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TesoroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/health': {
+      id: '/api/public/health'
+      path: '/api/public/health'
+      fullPath: '/api/public/health'
+      preLoaderRoute: typeof ApiPublicHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   MapaRoute: MapaRoute,
   ReyRoute: ReyRoute,
   TesoroRoute: TesoroRoute,
+  ApiPublicHealthRoute: ApiPublicHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
