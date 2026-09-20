@@ -88,15 +88,27 @@ export const createAdmin = createServerFn({ method: "POST" })
 
     const salt = newSalt();
     const hash = await hashPassword(data.password, salt);
-    let taken = false;
-    const { state } = await mutateState((s) => {
+    const { state, result } = await mutateState(async (s) => {
       if (s.admin) {
-        taken = true;
-        return;
+        const sameUser = user.toLowerCase() === s.admin.user.toLowerCase();
+        const existingHash = await hashPassword(data.password, s.admin.salt);
+        return sameUser && existingHash === s.admin.hash ? "existing-match" : "taken";
       }
       s.admin = { user, hash, salt };
+      return "created";
     });
-    if (taken) return fail("El Rey Pirata ya está dado de alta.");
+
+    // The first request may have reached PostgreSQL even if the browser lost its
+    // response during a rebuild. Repeating the same registration must therefore
+    // be safe and open the already-created account instead of trapping the user.
+    if (result === "taken") {
+      return {
+        ...fail("Ya existe un Rey Pirata. Entra con sus datos."),
+        existing: true as const,
+        data: toPublic(state),
+      };
+    }
+
     try {
       await writeSession({ kind: "admin" });
     } catch (error) {
@@ -105,14 +117,14 @@ export const createAdmin = createServerFn({ method: "POST" })
         ok: false as const,
         created: true as const,
         reason:
-          "El Rey Pirata se ha guardado, pero no se pudo abrir la sesión. Entra ahora con el usuario y la contraseña que acabas de crear.",
+          "La cuenta está guardada, pero la sesión no pudo abrirse. Comprueba SESSION_SECRET y vuelve a entrar con estos mismos datos.",
         data: toPublic(state),
         session: null as Session,
       };
     }
     return {
       ok: true as const,
-      created: true as const,
+      created: result === "created",
       reason: undefined,
       data: toPublic(state),
       session: { kind: "admin" } as Session,
