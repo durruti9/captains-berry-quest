@@ -42,6 +42,8 @@ export const Route = createFileRoute("/rey")({
         property: "og:description",
         content: "Alta de grumetes y CRUD de tareas con iconos y valor en Doblones.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReyPirata,
@@ -684,7 +686,7 @@ function MapaTesoro() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         {weeks.map((w) => {
-          const st = mapWeekStats(p, tasks.length, w, today);
+          const st = mapWeekStats(p, tasks, w, today);
           const ok = weekFulfilled(p, st, w.key);
           const approved = p.mapApprovals[w.key];
           const draft = extraDraft[w.key] ?? "";

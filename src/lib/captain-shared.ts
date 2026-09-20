@@ -202,32 +202,19 @@ export function mapDayStats(
 }
 
 /** Progreso semanal usando únicamente los días laborables transcurridos. */
-export function mapWeekStats(p: KidProgress, taskCount: number, week: MapWeek, today: string) {
-  const taskIds = new Set(Array.from({ length: taskCount }, (_, index) => String(index)));
-  const days = week.days.map((day) => {
-    const date = new Date(`${day}T12:00:00Z`);
-    const weekday = date.getUTCDay();
-    const weekend = weekday === 0 || weekday === 6;
-    const elapsed = day <= today;
-    const rawDone = doneOnDay(p, day).length;
-    const done = Math.min(taskCount, rawDone);
-    const pct = taskCount > 0 ? Math.min(100, Math.round((done / taskCount) * 100)) : 0;
-    return {
-      day,
-      done,
-      expected: taskCount,
-      pct,
-      elapsed,
-      weekend,
-      fulfilled: weekend || (elapsed && pct >= WEEKLY_GOAL_PCT),
-    } satisfies MapDayStats;
-  });
+export function mapWeekStats(
+  p: KidProgress,
+  tasks: readonly Task[],
+  week: MapWeek,
+  today: string,
+) {
+  const taskIds = new Set(tasks.map((task) => task.id));
+  const days = week.days.map((day) => mapDayStats(p, taskIds, day, today));
   const countedDays = days.filter((day) => day.elapsed && !day.weekend);
   const elapsedDays = countedDays.length;
-  const expected = elapsedDays * taskCount;
+  const expected = elapsedDays * taskIds.size;
   const done = countedDays.reduce((total, day) => total + day.done, 0);
   const pct = expected > 0 ? Math.round((done / expected) * 100) : 0;
-  void taskIds;
   return { done, expected, pct, elapsedDays, days };
 }
 

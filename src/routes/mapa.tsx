@@ -26,6 +26,8 @@ export const Route = createFileRoute("/mapa")({
         property: "og:description",
         content: "Llena los cofres de las 4 semanas del mes y reclama el tesoro legendario.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (
@@ -42,7 +44,7 @@ function GranMapa() {
   const now = new Date();
   const weeks = monthMapWeeks(now.getFullYear(), now.getMonth());
   const today = now.toISOString().slice(0, 10);
-  const stats = weeks.map((w) => mapWeekStats(progress, tasks.length, w, today));
+  const stats = weeks.map((w) => mapWeekStats(progress, tasks, w, today));
   const fulfilled = weeks.map((w, i) => weekFulfilled(progress, stats[i]!, w.key));
   const complete = fulfilled.every(Boolean);
 
