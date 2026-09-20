@@ -55,6 +55,9 @@ async function writeSession(value: Session) {
 type Snapshot = { data: PublicData; session: Session };
 
 function toPublic(state: import("./captain-db.server").StoredState): PublicData {
+  const runtime = globalThis as unknown as {
+    __captainFileStorageV2?: { location?: { mode?: "persistent" | "temporary" } | null };
+  };
   const progress: Record<string, KidProgress> = {};
   for (const [kidId, p] of Object.entries(state.progress)) progress[kidId] = refreshProgress(p);
   return {
@@ -62,16 +65,18 @@ function toPublic(state: import("./captain-db.server").StoredState): PublicData 
     kids: state.kids,
     tasks: state.tasks,
     progress,
-    storage: process.env["NODE_ENV"] === "production" || process.env["CAPTAIN_DATA_DIR"]
-      ? "persistent"
-      : "temporary",
+    storage: runtime.__captainFileStorageV2?.location?.mode ?? "temporary",
   };
 }
 
 async function snapshot(session?: Session): Promise<Snapshot> {
-  const { readState } = await import("./captain-db.server");
+  const { readState, checkStorage } = await import("./captain-db.server");
   const state = await readState();
-  return { data: toPublic(state), session: session !== undefined ? session : await readSession() };
+  const storage = await checkStorage();
+  return {
+    data: { ...toPublic(state), storage: storage.mode },
+    session: session !== undefined ? session : await readSession(),
+  };
 }
 
 /* ------------------------------ reads ------------------------------ */
