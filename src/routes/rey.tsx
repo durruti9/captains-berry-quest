@@ -18,6 +18,8 @@ import {
   Database,
   AlertTriangle,
   RotateCcw,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useCaptain, BLOCK_LABELS, type DayBlock, type Task } from "@/lib/captain-store";
 import {
@@ -364,7 +366,7 @@ function Grumetes() {
 const BLOCKS: DayBlock[] = ["manana", "tarde", "noche"];
 
 function Tareas() {
-  const { tasks, addTask, updateTask, removeTask } = useCaptain();
+  const { tasks, addTask, updateTask, moveTask, removeTask } = useCaptain();
   const [label, setLabel] = useState("");
   const [value, setValue] = useState(10);
   const [icon, setIcon] = useState(TASK_ICON_NAMES[0]!);
@@ -435,7 +437,7 @@ function Tareas() {
                 {BLOCK_LABELS[block]} ({blockTasks.length})
               </h3>
               <ul className="mt-2 space-y-3">
-                {blockTasks.map((task) =>
+                {blockTasks.map((task, index) =>
                   editing === task.id ? (
                     <TaskEditor
                       key={task.id}
@@ -450,6 +452,10 @@ function Tareas() {
                     <TaskRow
                       key={task.id}
                       task={task}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < blockTasks.length - 1}
+                      onMoveUp={() => void moveTask(task.id, "up")}
+                      onMoveDown={() => void moveTask(task.id, "down")}
                       onEdit={() => setEditing(task.id)}
                       onDelete={() => void removeTask(task.id)}
                     />
@@ -914,10 +920,18 @@ function IconPicker({
 
 function TaskRow({
   task,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
   onEdit,
   onDelete,
 }: {
   task: Task;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -930,6 +944,32 @@ function TaskRow({
         <p className="font-display text-sm font-extrabold text-muted-foreground">
           {BLOCK_LABELS[task.block]} · {task.value} Doblones
         </p>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          disabled={!canMoveUp}
+          aria-label={`Subir ${task.label}`}
+          title="Subir una posición"
+          onClick={onMoveUp}
+          className="size-9 rounded-xl border-2 border-ink/15"
+        >
+          <ChevronUp className="size-5" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          disabled={!canMoveDown}
+          aria-label={`Bajar ${task.label}`}
+          title="Bajar una posición"
+          onClick={onMoveDown}
+          className="size-9 rounded-xl border-2 border-ink/15"
+        >
+          <ChevronDown className="size-5" />
+        </Button>
       </div>
       <button
         type="button"
