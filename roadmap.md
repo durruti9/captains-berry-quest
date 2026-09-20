@@ -5,7 +5,7 @@
 - [x] Login con perfiles (Rey Pirata + Grumetes)
 - [x] Panel del Rey Pirata: CRUD de grumetes y de tareas con icono
 - [x] Mi Barco renderiza tareas dinámicas por grumete
-- [x] Datos en el servidor con PostgreSQL (fallback en memoria sin DATABASE_URL)
+- [x] Datos en un volumen permanente, independientes de las reconstrucciones
 - [x] App instalable en Android (manifest, iconos, botón "Instalar")
 - [x] Dockerfile, docker-compose y guía DESPLIEGUE.md para Easypanel
 - [x] Estadísticas: calendario mensual editable por día (Rey Pirata)
@@ -13,9 +13,9 @@
 - [x] Gran Mapa diario: 7 barras por semana, semáforo de progreso y fines de semana festivos
 - [x] Persistencia protegida en Easypanel e indicador del almacenamiento
 - [x] Reinicio voluntario del progreso de un único grumete
-- [x] Reconexión automática a PostgreSQL y bloqueo seguro si la base de datos no responde
-- [x] Comprobación de salud para reconstrucciones seguras en Easypanel
+- [x] Guardado atómico en archivo y bloqueo seguro si el volumen no responde
+- [x] Comprobación de salud para el volumen permanente de Easypanel
 - [x] Orden manual de tareas dentro de Mañana, Tarde y Noche
 - [x] Recuperar el alta inicial del Rey Pirata y validar el flujo completo tras reconstrucciones
 - [x] Añadir una mejora de gamificación centrada en la constancia diaria
-- [x] Diagnóstico visible de conexión PostgreSQL durante el alta y en la comprobación de salud
+- [x] Sustituir PostgreSQL por un volumen persistente sencillo en Easypanel

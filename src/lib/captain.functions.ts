@@ -19,15 +19,9 @@ import {
 
 type SessionData = { kind?: "admin" | "kid"; kidId?: string };
 
-function sessionConfig() {
-  const configured = process.env["SESSION_SECRET"];
-  if (process.env["REQUIRE_DATABASE"] === "1" && !configured) {
-    throw new Error("SESSION_SECRET es obligatoria en este despliegue.");
-  }
-  const password = configured ?? "diario-del-capitan-dev-secret-change-me-please-0001";
-  if (password.length < 32) {
-    throw new Error("SESSION_SECRET debe tener al menos 32 caracteres.");
-  }
+async function sessionConfig() {
+  const { getSessionSecret } = await import("./captain-db.server");
+  const password = await getSessionSecret();
   return {
     password,
     name: "capitan-session",
@@ -44,7 +38,7 @@ function sessionConfig() {
 }
 
 async function readSession(): Promise<Session> {
-  const session = await useSession<SessionData>(sessionConfig());
+  const session = await useSession<SessionData>(await sessionConfig());
   const data = session.data;
   if (data?.kind === "admin") return { kind: "admin" };
   if (data?.kind === "kid" && data.kidId) return { kind: "kid", kidId: data.kidId };
@@ -52,7 +46,7 @@ async function readSession(): Promise<Session> {
 }
 
 async function writeSession(value: Session) {
-  const session = await useSession<SessionData>(sessionConfig());
+  const session = await useSession<SessionData>(await sessionConfig());
   if (!value) await session.clear();
   else if (value.kind === "admin") await session.update({ kind: "admin" });
   else await session.update({ kind: "kid", kidId: value.kidId });
@@ -68,7 +62,9 @@ function toPublic(state: import("./captain-db.server").StoredState): PublicData 
     kids: state.kids,
     tasks: state.tasks,
     progress,
-    storage: process.env["DATABASE_URL"] ? "postgres" : "memory",
+    storage: process.env["NODE_ENV"] === "production" || process.env["CAPTAIN_DATA_DIR"]
+      ? "persistent"
+      : "temporary",
   };
 }
 
@@ -87,8 +83,7 @@ export const fetchSnapshot = createServerFn({ method: "GET" }).handler(async () 
 export const createAdmin = createServerFn({ method: "POST" })
   .validator((data: { user: string; password: string }) => data)
   .handler(async ({ data }) => {
-    const { databaseIssue, databaseIssueMessage, mutateState, hashPassword, newSalt } =
-      await import("./captain-db.server");
+    const { mutateState, hashPassword, newSalt } = await import("./captain-db.server");
     const user = data.user.trim();
     const fail = (reason: string) => ({
       ok: false as const,
@@ -117,10 +112,10 @@ export const createAdmin = createServerFn({ method: "POST" })
       result = mutation.result;
     } catch (error) {
       console.error("[storage] No se pudo crear el Rey Pirata.", error);
-      return fail(databaseIssueMessage(databaseIssue(error)));
+      return fail(error instanceof Error ? error.message : "No se ha podido guardar la cuenta.");
     }
 
-    // The first request may have reached PostgreSQL even if the browser lost its
+    // The first request may have saved the account even if the browser lost its
     // response during a rebuild. Repeating the same registration must therefore
     // be safe and open the already-created account instead of trapping the user.
     if (result === "taken") {
@@ -139,7 +134,7 @@ export const createAdmin = createServerFn({ method: "POST" })
         ok: false as const,
         created: true as const,
         reason:
-          "La cuenta está guardada, pero la sesión no pudo abrirse. Comprueba SESSION_SECRET y vuelve a entrar con estos mismos datos.",
+          "La cuenta está guardada, pero la sesión no pudo abrirse. Vuelve a entrar con estos mismos datos.",
         data: toPublic(state),
         session: null as Session,
       };

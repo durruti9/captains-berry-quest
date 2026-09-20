@@ -1,244 +1,124 @@
-# El Diario del Capitán — puesta en marcha en tu VPS (Easypanel)
+# El Diario del Capitán — despliegue en Easypanel
 
-La app guarda todo en **PostgreSQL** y se puede **instalar en Android** como app
-(icono en la pantalla de inicio y pantalla completa).
+La app guarda todos sus datos en un único archivo dentro de un **volumen permanente**. No necesita PostgreSQL, tablas, filas ni contraseñas de base de datos.
 
-> **¿Está el proyecto en GitHub?** No por defecto. Lovable guarda el código en
-> su repositorio interno. Para que Easypanel pueda leerlo, primero hay que
-> conectarlo a GitHub (ver el paso 0 más abajo).
+## Antes de empezar
 
----
+El proyecto debe estar en GitHub para que Easypanel pueda reconstruirlo. En Lovable, conecta el proyecto desde **Project Settings → GitHub** si todavía no lo has hecho.
 
-## 0. Conectar el proyecto a GitHub (necesario para Easypanel)
+## Instalación desde cero en Easypanel
 
-Easypanel construye la app leyendo un repositorio de GitHub, así que lo primero
-es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat):
+### 1. Crear la aplicación
 
-1. En Lovable, abre el menú **+** (abajo a la izquierda) → **GitHub** →
-   **Connect project**.
-2. Autoriza la **Lovable GitHub App** en tu cuenta de GitHub.
-3. Elige la cuenta/organización de GitHub y pulsa **Create Repository**.
-4. Lovable crea el repo y, a partir de ahí, **cada cambio que hagas en Lovable
-   se sube solo a GitHub** (rama `main`).
+1. En Easypanel, crea un proyecto o abre el que ya tienes.
+2. Pulsa **+ Service → App**.
+3. Selecciona el repositorio de GitHub y la rama `main`.
+4. Elige **Dockerfile** como método de construcción.
 
-> Alternativa sin GitHub: en Easypanel puedes subir el código con un `git push`
-> directo, pero entonces perderás la sincronización automática con Lovable. Lo
-> recomendado es conectar GitHub.
+### 2. Añadir el volumen permanente
 
----
+1. Dentro del servicio App, abre **Mounts** o **Volumes**.
+2. Añade un volumen persistente.
+3. Usa exactamente esta ruta de montaje dentro del contenedor:
 
-## Variables de entorno
-
-| Variable         | Obligatoria | Ejemplo                                              |
-| ---------------- | ----------- | ---------------------------------------------------- |
-| `DATABASE_URL`   | sí          | `postgres://capitan:clave@db:5432/capitan`           |
-| `SESSION_SECRET` | sí          | una frase larga y secreta (mínimo 32 caracteres)      |
-| `PORT`           | no          | `3000` (por defecto)                                 |
-| `HOST`           | no          | `0.0.0.0` (por defecto)                              |
-| `DATABASE_SSL`   | no          | `true` **solo** si usas un Postgres externo con SSL   |
-
-También puedes omitir `DATABASE_URL` y configurar en el servicio **App** estas
-cinco variables separadas: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y
-`DB_PASSWORD`. Las variables visibles dentro del servicio PostgreSQL no se
-comparten automáticamente con la App: debes copiarlas también a la App.
-
-- La tabla que necesita (`captain_state`) **se crea sola** al arrancar la app.
-  No hace falta ninguna migración manual.
-- `SESSION_SECRET` firma la cookie de sesión. Usa una frase larga, secreta y
-  **estable** (si la cambias, todas las sesiones caducan y hay que volver a
-  entrar).
-- `DATABASE_SSL=true` solo si tu Postgres exige cifrado (típico en proveedores
-  externos tipo Supabase, Neon, etc.). Con el Postgres **interno de Easypanel**
-  no hace falta.
-
-> Si no defines `DATABASE_URL`, la app arranca en **memoria** (solo para
-> pruebas: se pierde todo al reiniciar). En producción siempre usa Postgres.
-
----
-
-## Opción A — Easypanel (recomendada)
-
-### Requisitos previos
-
-- Un VPS con **Easypanel** instalado y funcionando.
-- El repositorio ya subido a **GitHub** (paso 0).
-- Un dominio propio, o el subdominio gratuito que te da Easypanel.
-
-### Paso 1 — Crear el proyecto
-
-1. Entra en Easypanel → **+ Project**.
-2. Nombre: `diario-capitan` → **Create**.
-
-### Paso 2 — Añadir la base de datos Postgres
-
-1. Dentro del proyecto `diario-capitan`, pulsa **+ Service** → **Postgres**.
-2. Rellena:
-   - **Name**: `db`
-   - **User**: anota el usuario (ej. `capitan`)
-   - **Password**: anota la contraseña
-   - **Database name**: `capitan` (o usa la que viene por defecto)
-3. Pulsa **Deploy** y espera a que el estado quede en **verde** (Running).
-4. Ve a la pestaña **Variables** del servicio Postgres y copia la
-   **Connection URL interna**. Tendrá este formato:
+   ```text
+   /data
    ```
-   postgres://capitan:CLAVE-QUE-PUSISTE@db:5432/capitan
-   ```
-   > En Easypanel los servicios del mismo proyecto se ven entre sí por su nombre
-   > interno (`db`), así que la URL usa ese nombre, no `localhost`.
 
-   > **Importante:** el usuario y el nombre de la base pueden ser distintos. No
-   > reconstruyas la URL suponiendo que son iguales: usa el botón de copiar de
-   > Easypanel. Por ejemplo, con usuario `irai`, host `iraitesoro_postgres` y base
-   > `iraitesoro`, la URL debe terminar en `/iraitesoro`, no en `/irai`.
+4. Guarda el volumen. No uses una carpeta temporal ni un bind mount que Easypanel elimine al reconstruir.
 
-### Paso 3 — Añadir la app
+Este volumen contendrá:
 
-1. Dentro del proyecto, **+ Service** → **App**.
-2. **Source**: tu repositorio de **GitHub**, rama `main`.
-   > Si aún no conectaste GitHub (paso 0), hazlo primero o usa *Git push*.
-3. **Build method**: selecciona **Dockerfile** (ya está en la raíz del repo).
-   > No hace falta configurar el comando de build: el Dockerfile fija
-   > `SELF_HOST=1` y compila con bun → servidor Node en `.output/server`.
-4. **Environment variables** — añade estas:
-   ```
-   DATABASE_URL=postgres://capitan:CLAVE@db:5432/capitan
-   SESSION_SECRET=pon-aqui-una-frase-larga-y-secreta-de-32-caracteres-minimo
-   REQUIRE_DATABASE=1
-   PORT=3000
-   HOST=0.0.0.0
-   ```
-   Como alternativa a `DATABASE_URL`, puedes poner en la **App**:
-   ```
-   DB_HOST=postgres
-   DB_PORT=5432
-   DB_NAME=iraitesoro
-   DB_USER=irai
-   DB_PASSWORD=tu-contraseña
-   ```
-   No copies `CORS_ORIGINS`: esta app no lo necesita. Si el host mostrado por
-   la URL interna de Easypanel no es `postgres`, usa exactamente el que figure
-   allí.
-   - Si tu Postgres fuera externo (fuera de Easypanel) y exigiera SSL, añade
-     también `DATABASE_SSL=true`. Con el Postgres interno del paso 2, **no lo
-     pongas**.
-5. **Port**: expón el **3000** (pestaña *Ports* → puerto interno 3000).
-6. **Deploy** y espera al estado verde.
+- `/data/captain-state.json`: Rey Pirata, grumetes, tareas, Doblones, estadísticas y mapa.
+- `/data/session-secret.txt`: clave privada creada automáticamente para conservar las sesiones.
 
-> `REQUIRE_DATABASE=1` evita que un error de configuración arranque la app con
-> almacenamiento temporal. Si falta `DATABASE_URL` o PostgreSQL no responde, el
-> despliegue mostrará el error en lugar de aceptar datos que luego se perderían.
+### 3. Variables y puerto
 
-### Paso 4 — Dominio y HTTPS (obligatorio para instalar en Android)
+No configures `DATABASE_URL`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REQUIRE_DATABASE` ni `SESSION_SECRET`: ya no se utilizan.
 
-1. Pestaña **Domains** del servicio App → **Add domain**.
-2. Usa tu dominio propio o el subdominio gratuito de Easypanel
-   (tipo `diario-capitan.a.easypanel.app`).
-3. Activa **HTTPS (Let's Encrypt)**.
+El Dockerfile configura automáticamente:
 
-> ⚠️ El certificado HTTPS es **obligatorio**: sin HTTPS, Android no ofrece la
-> opción de instalar la app. Easypanel gestiona el certificado automáticamente.
-
-### Paso 5 — Comprobar
-
-1. Abre la URL HTTPS en el navegador. Debes ver la pantalla de **alta del Rey
-   Pirata** (usuario y contraseña).
-2. Entra en la zona del Rey Pirata y comprueba que arriba aparece **“Datos
-   guardados en PostgreSQL”**. Si aparece “Almacenamiento temporal”, no añadas
-   datos: revisa `DATABASE_URL` y vuelve a desplegar.
-3. Si algo falla, revisa la pestaña **Logs** del servicio App:
-   - Build: `bun install --frozen-lockfile` + `bun run build` con `SELF_HOST=1`.
-   - Runtime: arranca `node .output/server/index.mjs` en el puerto 3000.
-4. Abre `https://TU-DOMINIO/api/public/health`. Antes de crear el Rey Pirata
-   debe responder con este contenido:
-   ```json
-   {"ok":true,"database":"connected","persistent":true,"session":"ready"}
-   ```
-    Si devuelve un error 503, no continúes. El campo `issue` orienta la causa:
-    - `database_missing`: la URL termina en un nombre de base que no existe.
-    - `credentials_rejected`: usuario o contraseña incorrectos.
-    - `host_unreachable`: host interno incorrecto o PostgreSQL detenido.
-    Corrige `DATABASE_URL` copiando la URL interna completa, o comprueba que
-    `SESSION_SECRET` tenga al menos 32 caracteres.
-
-### Paso 6 — Primer arranque (configurar la app)
-
-1. Abre la web: te pedirá dar de alta al **Rey Pirata** (usuario y contraseña).
-   > Esto crea el admin; solo se hace una vez. Anota usuario y contraseña.
-2. Desde el panel del Rey Pirata, da de alta a los **grumetes** (nombre y foto o
-   emoji) y ajusta las **tareas** (nombre, Doblones, icono y momento del día:
-   Mañana / Tarde / Noche).
-3. Pulsa **Salir**. La pantalla de inicio mostrará los perfiles.
-4. El niño entra tocando su perfil; el Rey Pirata entra con su contraseña.
-
----
-
-## Instalar en Android (PWA)
-
-1. Abre la web con **Chrome** en el dominio con HTTPS.
-2. Tras visitarla un par de veces (o tras un poco de uso), aparecerá abajo el
-   botón **"Instalar"**. También puedes forzarlo con el menú
-   ⋮ → *Instalar aplicación / Añadir a pantalla de inicio*.
-3. En **iPad/iPhone**: Safari → botón Compartir → *Añadir a pantalla de inicio*.
-
-La app abre a pantalla completa con su icono propio. Necesita conexión con el
-VPS (no funciona sin internet).
-
----
-
-## Opción B — Docker Compose (VPS a pelo)
-
-Para quien no quiera usar Easypanel:
-
-```sh
-git clone <tu-repo-github> diario-capitan
-cd diario-capitan
-# edita SESSION_SECRET y la contraseña de Postgres en docker-compose.yml
-docker compose up -d --build
+```text
+PORT=3000
+HOST=0.0.0.0
+CAPTAIN_DATA_DIR=/data
 ```
 
-La app queda en `http://IP-DEL-VPS:3000`. Ponla detrás de un proxy con HTTPS
-(Nginx Proxy Manager, Traefik o Caddy) antes de usarla en el móvil: sin HTTPS,
-Android no ofrece instalar la app.
+En **Ports**, expón el puerto interno `3000`.
 
----
+### 4. Dominio y HTTPS
+
+1. Añade tu dominio o el subdominio de Easypanel al servicio App.
+2. Activa HTTPS.
+
+HTTPS es obligatorio para que Android permita instalar la web como aplicación.
+
+### 5. Primer despliegue
+
+1. Pulsa **Deploy/Rebuild** en la App.
+2. Espera a que aparezca como activa.
+3. Abre:
+
+   ```text
+   https://TU-DOMINIO/api/public/health
+   ```
+
+4. Antes del alta debe responder de forma similar a:
+
+   ```json
+   {"ok":true,"storage":"ready","persistent":true,"initialized":false,"session":"ready"}
+   ```
+
+5. Abre la página principal y crea el Rey Pirata.
+6. Después del alta, `initialized` pasará a `true`.
+
+Si `persistent` aparece como `false`, no introduzcas datos reales: comprueba que el volumen esté montado exactamente en `/data`.
+
+## Actualizar sin perder datos
+
+1. No borres el volumen montado en `/data`.
+2. Reconstruye o vuelve a desplegar **solo la App**.
+3. El nuevo contenedor volverá a montar el mismo volumen y leerá automáticamente los datos existentes.
+4. Comprueba `/api/public/health` y confirma que `persistent` sigue siendo `true`.
+
+Una reconstrucción no borra el archivo. Los datos solo se eliminan si borras el volumen desde Easypanel o borras manualmente `/data/captain-state.json`.
 
 ## Copias de seguridad
 
-Todos los datos viven en la tabla `captain_state` de Postgres (un único
-registro JSON, `id=1`):
+Desde la terminal del servicio App:
 
 ```sh
-# Exportar
-docker exec -t <contenedor-postgres> pg_dump -U capitan capitan > copia.sql
-
-# Restaurar
-docker exec -i <contenedor-postgres> psql -U capitan capitan < copia.sql
+cp /data/captain-state.json /data/captain-state.backup.json
 ```
 
-En Easypanel, el contenedor se llama como el servicio Postgres
-(ej. `diario-capitan-db-...`); míralo en la pestaña *Containers*.
-
-### Comprobar que existe el registro
-
-Desde la consola del servicio PostgreSQL:
+Para restaurar una copia:
 
 ```sh
-psql -U capitan -d capitan -c "select id, updated_at from captain_state;"
+cp /data/captain-state.backup.json /data/captain-state.json
 ```
 
-Desde la primera comprobación debe aparecer una fila con `id = 1`. La tabla y
-esa fila las crea la propia app; no las insertes manualmente.
+Después, reinicia únicamente la App.
 
-### Actualizar sin perder datos
+## Reinicio voluntario completo
 
-1. Haz una copia de seguridad con `pg_dump` antes de un cambio importante.
-2. En Easypanel reconstruye o vuelve a desplegar **solo el servicio App**.
-3. No borres ni recrees el servicio PostgreSQL y no elimines su volumen.
-4. Mantén exactamente la misma `DATABASE_URL` y `SESSION_SECRET`.
-5. Tras el despliegue, entra como Rey Pirata y confirma el aviso **“Datos
-   guardados en PostgreSQL”**.
-6. Comprueba `/api/public/health`; debe indicar `"database":"connected"`.
+Si realmente quieres empezar de cero:
 
-Reconstruir la app no modifica la tabla. Los datos solo se pierden si se borra
-el volumen de PostgreSQL, se cambia la conexión por otra base vacía o se usa la
-aplicación sin `DATABASE_URL`.
+1. Guarda antes una copia de seguridad si la necesitas.
+2. Borra `/data/captain-state.json` y `/data/session-secret.txt` desde la terminal de la App.
+3. Reinicia la App.
+4. La app creará archivos nuevos y volverá a mostrar el alta del Rey Pirata.
+
+## Instalar en Android
+
+1. Abre la app con Chrome usando la dirección HTTPS.
+2. Usa el botón **Instalar** cuando aparezca o abre el menú de Chrome y pulsa **Instalar aplicación / Añadir a pantalla de inicio**.
+
+## Docker Compose opcional
+
+El archivo `docker-compose.yml` incluido crea la App y un volumen llamado `capitan-data`. Ejecuta:
+
+```sh
+docker compose up -d --build
+```
+
+La app quedará disponible en `http://IP-DEL-VPS:3000`. Usa un proxy HTTPS antes de instalarla en Android.

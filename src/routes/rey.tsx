@@ -106,26 +106,26 @@ function ReyPirata() {
 
       <div
         className={`mb-6 flex items-start gap-3 rounded-2xl border-4 p-4 font-bold ${
-          data.storage === "postgres"
+          data.storage === "persistent"
             ? "border-leaf/60 bg-leaf/15"
             : "border-gold bg-gold/20"
         }`}
       >
-        {data.storage === "postgres" ? (
+        {data.storage === "persistent" ? (
           <Database className="mt-0.5 size-6 shrink-0 text-leaf" />
         ) : (
           <AlertTriangle className="mt-0.5 size-6 shrink-0 text-gold-foreground" />
         )}
         <div>
           <p className="font-display text-lg font-extrabold">
-            {data.storage === "postgres"
-              ? "Datos guardados en PostgreSQL"
+            {data.storage === "persistent"
+              ? "Datos protegidos en el volumen permanente"
               : "Almacenamiento temporal"}
           </p>
-          {data.storage === "memory" && (
+          {data.storage === "temporary" && (
             <p className="text-sm">
-              Los cambios de esta vista de prueba se borrarán al reconstruir. En Easypanel deben
-              aparecer como guardados en PostgreSQL.
+              Esta vista de prueba usa almacenamiento temporal. En Easypanel debe aparecer el
+              volumen permanente.
             </p>
           )}
         </div>

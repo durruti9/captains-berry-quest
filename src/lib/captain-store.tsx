@@ -127,7 +127,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
         if (!alive) return;
         console.error(error);
         setLoadError(
-          "No se puede conectar con la base de datos. Comprueba PostgreSQL y DATABASE_URL en Easypanel.",
+          "No se puede abrir el almacenamiento. Comprueba que el volumen de Easypanel está montado en /data.",
         );
       })
       .finally(() => {
@@ -166,7 +166,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
         console.error(error);
         return {
           ok: false,
-          reason: "No se ha podido guardar. Comprueba la conexión con PostgreSQL e inténtalo de nuevo.",
+          reason: "No se ha podido guardar. Comprueba el volumen permanente de Easypanel e inténtalo de nuevo.",
         };
       }
     },
