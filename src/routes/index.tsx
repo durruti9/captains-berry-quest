@@ -88,7 +88,7 @@ function Inicio() {
       navigate({ to: "/rey" });
     } catch (unexpectedError) {
       console.error(unexpectedError);
-      setError("No se ha podido completar el alta. Comprueba PostgreSQL y vuelve a intentarlo.");
+      setError("No se ha podido completar el alta. Comprueba el volumen permanente y vuelve a intentarlo.");
     } finally {
       setSubmitting(false);
     }

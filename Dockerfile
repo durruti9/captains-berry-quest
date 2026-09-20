@@ -15,11 +15,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
-ENV REQUIRE_DATABASE=1
+ENV CAPTAIN_DATA_DIR=/data
 
 COPY --from=build /app/.output ./.output
 
 EXPOSE 3000
+VOLUME ["/data"]
 HEALTHCHECK --interval=15s --timeout=12s --start-period=30s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/public/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 CMD ["node", ".output/server/index.mjs"]
