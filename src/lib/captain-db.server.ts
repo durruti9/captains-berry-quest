@@ -26,9 +26,18 @@ export function storageMode(): "postgres" | "memory" {
 
 type Sql = import("postgres").Sql;
 
-let sqlPromise: Promise<Sql> | null = null;
-let memoryState: StoredState | null = null;
-let storageLogged = false;
+type RuntimeStorage = {
+  sqlPromise: Promise<Sql> | null;
+  memoryState: StoredState | null;
+  storageLogged: boolean;
+};
+
+const runtimeGlobal = globalThis as unknown as { __captainRuntimeStorage?: RuntimeStorage };
+const runtimeStorage = (runtimeGlobal.__captainRuntimeStorage ??= {
+  sqlPromise: null,
+  memoryState: null,
+  storageLogged: false,
+});
 
 const CONNECT_ATTEMPTS = 6;
 const CONNECT_RETRY_MS = 1_000;
@@ -77,9 +86,9 @@ async function connectPostgres(url: string): Promise<Sql> {
         insert into captain_state (id, data, updated_at)
         values (1, ${sql.json(emptyState() as never)}, now())
         on conflict (id) do nothing`;
-      if (!storageLogged) {
+      if (!runtimeStorage.storageLogged) {
         console.info("[storage] PostgreSQL conectado; persistencia activa.");
-        storageLogged = true;
+        runtimeStorage.storageLogged = true;
       }
       return sql;
     } catch (error) {
@@ -104,26 +113,26 @@ async function getSql(): Promise<Sql | null> {
         "DATABASE_URL es obligatoria en este despliegue. La aplicación no arrancará con almacenamiento temporal.",
       );
     }
-    if (!storageLogged) {
+    if (!runtimeStorage.storageLogged) {
       console.warn("[storage] Almacenamiento temporal activo; los datos se perderán al reiniciar.");
-      storageLogged = true;
+      runtimeStorage.storageLogged = true;
     }
     return null;
   }
-  if (!sqlPromise) {
+  if (!runtimeStorage.sqlPromise) {
     // Una promesa rechazada no debe quedar memorizada: el siguiente intento
     // vuelve a conectar cuando PostgreSQL ya esté preparado.
-    sqlPromise = connectPostgres(url).catch((error) => {
-      sqlPromise = null;
+    runtimeStorage.sqlPromise = connectPostgres(url).catch((error) => {
+      runtimeStorage.sqlPromise = null;
       throw error;
     });
   }
-  return sqlPromise;
+  return runtimeStorage.sqlPromise;
 }
 
 export async function readState(): Promise<StoredState> {
   const sql = await getSql();
-  if (!sql) return (memoryState ??= emptyState());
+  if (!sql) return (runtimeStorage.memoryState ??= emptyState());
   const rows = await sql<{ data: StoredState }[]>`
     select data from captain_state where id = 1`;
   return normalizeState(rows[0]?.data);
@@ -135,9 +144,9 @@ export async function mutateState<T>(
 ): Promise<{ state: StoredState; result: T }> {
   const sql = await getSql();
   if (!sql) {
-    const state = (memoryState ??= emptyState());
+    const state = (runtimeStorage.memoryState ??= emptyState());
     const result = await mutator(state);
-    memoryState = state;
+    runtimeStorage.memoryState = state;
     return { state, result };
   }
 
