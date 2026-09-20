@@ -93,7 +93,7 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    ```
    DATABASE_URL=postgres://capitan:CLAVE@db:5432/capitan
    SESSION_SECRET=pon-aqui-una-frase-larga-y-secreta-de-32-caracteres-minimo
-    REQUIRE_DATABASE=1
+   REQUIRE_DATABASE=1
    PORT=3000
    HOST=0.0.0.0
    ```
@@ -127,6 +127,13 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
 3. Si algo falla, revisa la pestaña **Logs** del servicio App:
    - Build: `bun install --frozen-lockfile` + `bun run build` con `SELF_HOST=1`.
    - Runtime: arranca `node .output/server/index.mjs` en el puerto 3000.
+4. Abre `https://TU-DOMINIO/api/public/health`. Antes de crear el Rey Pirata
+   debe responder exactamente:
+   ```json
+   {"ok":true,"database":"connected"}
+   ```
+   Si devuelve un error 503, no continúes: la app reintentará la conexión, pero
+   debes corregir `DATABASE_URL` o arrancar el servicio PostgreSQL.
 
 ### Paso 6 — Primer arranque (configurar la app)
 
@@ -194,8 +201,8 @@ Desde la consola del servicio PostgreSQL:
 psql -U capitan -d capitan -c "select id, updated_at from captain_state;"
 ```
 
-Después del primer cambio debe aparecer una fila con `id = 1`. La tabla y esa
-fila las crea la propia app; no las insertes manualmente.
+Desde la primera comprobación debe aparecer una fila con `id = 1`. La tabla y
+esa fila las crea la propia app; no las insertes manualmente.
 
 ### Actualizar sin perder datos
 
@@ -205,6 +212,7 @@ fila las crea la propia app; no las insertes manualmente.
 4. Mantén exactamente la misma `DATABASE_URL` y `SESSION_SECRET`.
 5. Tras el despliegue, entra como Rey Pirata y confirma el aviso **“Datos
    guardados en PostgreSQL”**.
+6. Comprueba `/api/public/health`; debe indicar `"database":"connected"`.
 
 Reconstruir la app no modifica la tabla. Los datos solo se pierden si se borra
 el volumen de PostgreSQL, se cambia la conexión por otra base vacía o se usa la
