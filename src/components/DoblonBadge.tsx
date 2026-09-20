@@ -1,5 +1,5 @@
 import { Coins } from "lucide-react";
-import { useCaptain, WEEKLY_LIMIT } from "@/lib/captain-store";
+import { useCaptain, WEEKLY_LIMIT, chestAvailable } from "@/lib/captain-store";
 
 export function DoblonBadge() {
   const { progress, activeKid } = useCaptain();
@@ -9,7 +9,7 @@ export function DoblonBadge() {
       <Coins className="size-7 text-gold-foreground" />
       <div className="leading-none">
         <p className="font-display text-2xl font-extrabold text-gold-foreground">
-          {progress.balance}
+          {chestAvailable(progress)}
         </p>
         <p className="text-[11px] font-bold text-gold-foreground/80">
           Doblones · semana {progress.weeklyEarned}/{WEEKLY_LIMIT}

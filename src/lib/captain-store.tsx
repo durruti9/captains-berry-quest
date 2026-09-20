@@ -26,6 +26,7 @@ export {
   WEEKLY_LIMIT,
   DAILY_REDEEM_LIMIT,
   BLOCK_LABELS,
+  chestAvailable,
   DEFAULT_TASKS,
   type DayBlock,
   type Kid,

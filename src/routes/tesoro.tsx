@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Gamepad2, Minus, Plus } from "lucide-react";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
-import { useCaptain, WEEKLY_LIMIT, DAILY_REDEEM_LIMIT } from "@/lib/captain-store";
+import { useCaptain, WEEKLY_LIMIT, DAILY_REDEEM_LIMIT, chestAvailable } from "@/lib/captain-store";
 
 export const Route = createFileRoute("/tesoro")({
   head: () => ({
@@ -53,13 +53,27 @@ function Tesoro() {
           <p className="font-display text-xl font-extrabold text-parchment-foreground">
             Tu cofre del tesoro
           </p>
+          <p className="text-sm font-bold text-parchment-foreground/70">
+            Los Doblones de esta semana (se resetea cada lunes)
+          </p>
           <div className="animate-bob my-4 text-[90px] leading-none">🧰</div>
           <p className="gold-bg mx-auto w-fit rounded-3xl border-4 border-ink/20 px-8 py-3 font-display text-6xl font-extrabold text-gold-foreground">
-            {progress.balance}
+            {chestAvailable(progress)}
           </p>
           <p className="mt-3 font-display text-2xl font-extrabold text-parchment-foreground">
-            Doblones = {progress.balance} minutos
+            Doblones = {chestAvailable(progress)} minutos
           </p>
+          <div className="mx-auto mt-5 w-fit rounded-3xl border-4 border-ink/20 bg-card/90 px-6 py-3">
+            <p className="font-display text-lg font-extrabold text-muted-foreground">
+              🏴‍☠️ Tu botín
+            </p>
+            <p className="font-display text-4xl font-extrabold text-primary">
+              {progress.booty}
+            </p>
+            <p className="text-xs font-bold text-muted-foreground">
+              Lo que has ido ahorrando semana a semana: nunca se pierde
+            </p>
+          </div>
         </section>
 
         <div className="space-y-5">
@@ -125,7 +139,7 @@ function Tesoro() {
             </button>
 
             <p className="mt-3 text-center font-display text-lg font-extrabold text-muted-foreground">
-              Te quedarían {Math.max(0, progress.balance - amount)} Doblones
+              Te quedarían {Math.max(0, chestAvailable(progress) - amount)} Doblones en el cofre
             </p>
 
             {feedback && (

@@ -18,14 +18,20 @@ export type Kid = {
 };
 
 export type KidProgress = {
-  balance: number;
-  weeklyEarned: number;
+  booty: number; // botín acumulado (no se resetea)
+  weeklyEarned: number; // Doblones ganados esta semana (lunes a domingo)
+  redeemedWeek: number; // Doblones canjeados esta semana
   weekKey: string;
   dayKey: string;
   tasksDone: string[];
   redeemedToday: number;
   mapStamps: number;
 };
+
+/** Doblones disponibles esta semana en el cofre. */
+export function chestAvailable(p: KidProgress) {
+  return Math.max(0, p.weeklyEarned - p.redeemedWeek);
+}
 
 export type Session = { kind: "admin" } | { kind: "kid"; kidId: string } | null;
 
@@ -78,8 +84,9 @@ export function weekKey(date = new Date()) {
 
 export function newProgress(): KidProgress {
   return {
-    balance: 0,
+    booty: 0,
     weeklyEarned: 0,
+    redeemedWeek: 0,
     weekKey: weekKey(),
     dayKey: todayKey(),
     tasksDone: [],
@@ -88,10 +95,25 @@ export function newProgress(): KidProgress {
   };
 }
 
-/** Applies the weekly / daily resets. */
-export function refreshProgress(p: KidProgress): KidProgress {
-  let next = p;
-  if (next.weekKey !== weekKey()) next = { ...next, weekKey: weekKey(), weeklyEarned: 0 };
+/** Applies the weekly (Mon–Sun) / daily resets and migrates old saves. */
+export function refreshProgress(p: KidProgress & { balance?: number }): KidProgress {
+  // Migración de partidas antiguas: el saldo acumulado pasa al botín.
+  let next: KidProgress = {
+    ...p,
+    booty: p.booty ?? p.balance ?? 0,
+    redeemedWeek: p.redeemedWeek ?? 0,
+  };
+  delete (next as { balance?: number }).balance;
+  if (next.weekKey !== weekKey()) {
+    // Al empezar la semana, el sobrante no canjeado pasa al botín.
+    next = {
+      ...next,
+      weekKey: weekKey(),
+      booty: next.booty + chestAvailable(next),
+      weeklyEarned: 0,
+      redeemedWeek: 0,
+    };
+  }
   if (next.dayKey !== todayKey())
     next = { ...next, dayKey: todayKey(), tasksDone: [], redeemedToday: 0 };
   return next;

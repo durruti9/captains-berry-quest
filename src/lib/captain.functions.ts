@@ -4,6 +4,7 @@ import { useSession } from "@tanstack/react-start/server";
 import {
   DAILY_REDEEM_LIMIT,
   WEEKLY_LIMIT,
+  chestAvailable,
   newProgress,
   refreshProgress,
   type DayBlock,
@@ -242,8 +243,7 @@ export const toggleTask = createServerFn({ method: "POST" })
         s.progress[kidId] = {
           ...p,
           tasksDone: p.tasksDone.filter((t) => t !== task.id),
-          balance: Math.max(0, p.balance - task.value),
-          weeklyEarned: Math.max(0, p.weeklyEarned - task.value),
+          weeklyEarned: Math.max(p.redeemedWeek, p.weeklyEarned - task.value),
         };
         return;
       }
@@ -257,7 +257,6 @@ export const toggleTask = createServerFn({ method: "POST" })
       s.progress[kidId] = {
         ...p,
         tasksDone: [...p.tasksDone, task.id],
-        balance: p.balance + granted,
         weeklyEarned: p.weeklyEarned + granted,
       };
     });
@@ -280,9 +279,9 @@ export const redeem = createServerFn({ method: "POST" })
         reason = "Escribe cuántos Doblones quieres gastar.";
         return;
       }
-      if (amount > p.balance) {
+      if (amount > chestAvailable(p)) {
         ok = false;
-        reason = "No tienes suficientes Doblones en el cofre. ¡A por más tareas!";
+        reason = "No tienes suficientes Doblones en el cofre de esta semana. ¡A por más tareas!";
         return;
       }
       const remaining = Math.max(0, DAILY_REDEEM_LIMIT - p.redeemedToday);
@@ -296,7 +295,7 @@ export const redeem = createServerFn({ method: "POST" })
       }
       s.progress[kidId] = {
         ...p,
-        balance: p.balance - amount,
+        redeemedWeek: p.redeemedWeek + amount,
         redeemedToday: p.redeemedToday + amount,
       };
     });
