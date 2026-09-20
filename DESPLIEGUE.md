@@ -37,6 +37,11 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
 | `HOST`           | no          | `0.0.0.0` (por defecto)                              |
 | `DATABASE_SSL`   | no          | `true` **solo** si usas un Postgres externo con SSL   |
 
+También puedes omitir `DATABASE_URL` y configurar en el servicio **App** estas
+cinco variables separadas: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y
+`DB_PASSWORD`. Las variables visibles dentro del servicio PostgreSQL no se
+comparten automáticamente con la App: debes copiarlas también a la App.
+
 - La tabla que necesita (`captain_state`) **se crea sola** al arrancar la app.
   No hace falta ninguna migración manual.
 - `SESSION_SECRET` firma la cookie de sesión. Usa una frase larga, secreta y
@@ -102,6 +107,17 @@ es subir el código ahí. Esto se hace desde Lovable (no puedo hacerlo por chat)
    PORT=3000
    HOST=0.0.0.0
    ```
+   Como alternativa a `DATABASE_URL`, puedes poner en la **App**:
+   ```
+   DB_HOST=postgres
+   DB_PORT=5432
+   DB_NAME=iraitesoro
+   DB_USER=irai
+   DB_PASSWORD=tu-contraseña
+   ```
+   No copies `CORS_ORIGINS`: esta app no lo necesita. Si el host mostrado por
+   la URL interna de Easypanel no es `postgres`, usa exactamente el que figure
+   allí.
    - Si tu Postgres fuera externo (fuera de Easypanel) y exigiera SSL, añade
      también `DATABASE_SSL=true`. Con el Postgres interno del paso 2, **no lo
      pongas**.

@@ -17,7 +17,39 @@ export function emptyState(): StoredState {
 }
 
 export function storageMode(): "postgres" | "memory" {
-  return process.env["DATABASE_URL"] ? "postgres" : "memory";
+  return databaseConfig() ? "postgres" : "memory";
+}
+
+type DatabaseConfig =
+  | { source: "url"; url: string }
+  | {
+      source: "variables";
+      host: string;
+      port: number;
+      database: string;
+      username: string;
+      password: string;
+    };
+
+function databaseConfig(): DatabaseConfig | null {
+  const url = process.env["DATABASE_URL"]?.trim();
+  if (url) return { source: "url", url };
+
+  const host = process.env["DB_HOST"]?.trim();
+  const database = process.env["DB_NAME"]?.trim();
+  const username = process.env["DB_USER"]?.trim();
+  const password = process.env["DB_PASSWORD"];
+  if (!host || !database || !username || password === undefined) return null;
+
+  const parsedPort = Number(process.env["DB_PORT"] ?? "5432");
+  return {
+    source: "variables",
+    host,
+    port: Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : 5432,
+    database,
+    username,
+    password,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,17 +135,27 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function connectPostgres(url: string): Promise<Sql> {
+async function connectPostgres(config: DatabaseConfig): Promise<Sql> {
   const { default: postgres } = await import("postgres");
   const useSsl = process.env["DATABASE_SSL"] === "true";
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= CONNECT_ATTEMPTS; attempt += 1) {
-    const sql = postgres(url, {
+    const commonOptions = {
       max: 3,
       connect_timeout: 10,
       ...(useSsl ? { ssl: "require" as const } : {}),
-    });
+    };
+    const sql = config.source === "url"
+      ? postgres(config.url, commonOptions)
+      : postgres({
+          ...commonOptions,
+          host: config.host,
+          port: config.port,
+          database: config.database,
+          username: config.username,
+          password: config.password,
+        });
     try {
       await sql`create table if not exists captain_state (
         id int primary key,
@@ -141,11 +183,11 @@ async function connectPostgres(url: string): Promise<Sql> {
 }
 
 async function getSql(): Promise<Sql | null> {
-  const url = process.env["DATABASE_URL"];
-  if (!url) {
+  const config = databaseConfig();
+  if (!config) {
     if (process.env["REQUIRE_DATABASE"] === "1") {
       throw new Error(
-        "DATABASE_URL es obligatoria en este despliegue. La aplicación no arrancará con almacenamiento temporal.",
+        "Falta la conexión PostgreSQL en la app. Añade DATABASE_URL o las cinco variables DB_HOST, DB_PORT, DB_NAME, DB_USER y DB_PASSWORD.",
       );
     }
     if (!runtimeStorage.storageLogged) {
@@ -157,7 +199,7 @@ async function getSql(): Promise<Sql | null> {
   if (!runtimeStorage.sqlPromise) {
     // Una promesa rechazada no debe quedar memorizada: el siguiente intento
     // vuelve a conectar cuando PostgreSQL ya esté preparado.
-    runtimeStorage.sqlPromise = connectPostgres(url).catch((error) => {
+    runtimeStorage.sqlPromise = connectPostgres(config).catch((error) => {
       runtimeStorage.sqlPromise = null;
       throw error;
     });
