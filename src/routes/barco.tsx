@@ -47,23 +47,31 @@ function MiBarco() {
   const done = tasks.filter((t) => progress.tasksDone.includes(t.id)).length;
   const streak = navigationStreak(progress, tasks);
 
+  function celebrateCompletedDay() {
+    setDayComplete(true);
+    setMessage("¡Guardias completas! El barco está listo para zarpar");
+    setTimeout(() => {
+      setMessage(null);
+      setDayComplete(false);
+    }, 3200);
+  }
+
   async function handle(id: string, value: number) {
     const result = await toggleTask(id);
     if (result === "earned") {
       setCelebrating(id);
       const completesDay = total > 0 && done + 1 === total;
-      setDayComplete(completesDay);
-      setMessage(
-        completesDay ? "¡Guardias completas! El barco está listo para zarpar" : `¡+${value} Doblones, grumete!`,
-      );
+      if (completesDay) celebrateCompletedDay();
+      else setMessage(`¡+${value} Doblones, grumete!`);
       setTimeout(() => setCelebrating(null), 900);
-      setTimeout(() => {
-        setMessage(null);
-        setDayComplete(false);
-      }, completesDay ? 3200 : 1600);
+      if (!completesDay) setTimeout(() => setMessage(null), 1600);
     } else if (result === "limit") {
-      setMessage("¡Ya llegaste al límite de la semana! 🏴‍☠️");
-      setTimeout(() => setMessage(null), 2200);
+      const completesDay = total > 0 && done + 1 === total;
+      if (completesDay) celebrateCompletedDay();
+      else {
+        setMessage("¡Ya llegaste al límite de la semana! 🏴‍☠️");
+        setTimeout(() => setMessage(null), 2200);
+      }
     }
   }
 
