@@ -10,8 +10,6 @@ import {
 
 import * as api from "./captain.functions";
 import {
-  DAILY_REDEEM_LIMIT,
-  WEEKLY_LIMIT,
   emptyData,
   newProgress,
   refreshProgress,
@@ -19,6 +17,7 @@ import {
   type KidProgress,
   type PublicData,
   type Session,
+  type Settings,
   type Task,
 } from "./captain-shared";
 
@@ -32,6 +31,7 @@ export {
   type Kid,
   type KidProgress,
   type Session,
+  type Settings,
   type Task,
 } from "./captain-shared";
 
@@ -46,8 +46,11 @@ type Ctx = {
   tasks: Task[];
   activeKid: Kid | null;
   progress: KidProgress;
+  settings: Settings;
   weeklyRemaining: number;
+  /** Infinity cuando no hay límite diario. */
   dailyRedeemRemaining: number;
+  updateSettings: (settings: Settings) => Promise<void>;
   // auth
   createAdmin: (
     user: string,
@@ -294,6 +297,13 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     [applySnapshot],
   );
 
+  const updateSettings = useCallback(
+    async (settings: Settings) => {
+      applySnapshot(await api.updateSettings({ data: settings }));
+    },
+    [applySnapshot],
+  );
+
   const setWeekApproval = useCallback(
     async (kidId: string, weekKey: string, extraTasks: string | null) => {
       applySnapshot(await api.setWeekApproval({ data: { kidId, weekKey, extraTasks } }));
@@ -320,8 +330,13 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       tasks: data.tasks,
       activeKid,
       progress,
-      weeklyRemaining: Math.max(0, WEEKLY_LIMIT - progress.weeklyEarned),
-      dailyRedeemRemaining: Math.max(0, DAILY_REDEEM_LIMIT - progress.redeemedToday),
+      settings: data.settings,
+      weeklyRemaining: Math.max(0, data.settings.weeklyLimit - progress.weeklyEarned),
+      dailyRedeemRemaining:
+        data.settings.dailyRedeemLimit > 0
+          ? Math.max(0, data.settings.dailyRedeemLimit - progress.redeemedToday)
+          : Infinity,
+      updateSettings,
       createAdmin,
       loginAdmin,
       enterKid,
@@ -367,6 +382,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       transferToChest,
       setDayTask,
       setWeekApproval,
+      updateSettings,
     ],
   );
 

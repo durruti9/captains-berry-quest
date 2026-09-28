@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Coins,
   Minus,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { useCaptain, BLOCK_LABELS, type DayBlock, type Task } from "@/lib/captain-store";
 import {
@@ -62,7 +63,7 @@ const AVATARS = ["🧒", "👦", "👧", "🦜", "🐙", "🦈", "🐵", "🐯",
 function ReyPirata() {
   const { ready, session, logout, data } = useCaptain();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"grumetes" | "tareas" | "estadisticas" | "mapa">("grumetes");
+  const [tab, setTab] = useState<"grumetes" | "tareas" | "estadisticas" | "mapa" | "ajustes">("grumetes");
 
   if (!ready) return <div className="sea-bg min-h-screen" />;
 
@@ -140,6 +141,7 @@ function ReyPirata() {
             ["tareas", "Tareas", ListChecks],
             ["estadisticas", "Estadísticas", CalendarDays],
             ["mapa", "Mapa del Tesoro", Map],
+            ["ajustes", "Ajustes", SettingsIcon],
           ] as const
         ).map(([key, label, Icon]) => (
           <button
@@ -161,8 +163,10 @@ function ReyPirata() {
         <Tareas />
       ) : tab === "estadisticas" ? (
         <Estadisticas />
-      ) : (
+      ) : tab === "mapa" ? (
         <MapaTesoro />
+      ) : (
+        <Ajustes />
       )}
     </div>
   );
@@ -1164,5 +1168,74 @@ function TaskEditor({
         </button>
       </div>
     </li>
+  );
+}
+
+function Ajustes() {
+  const { settings, updateSettings } = useCaptain();
+  const [weekly, setWeekly] = useState(settings.weeklyLimit);
+  const [dailyOn, setDailyOn] = useState(settings.dailyRedeemLimit > 0);
+  const [daily, setDaily] = useState(settings.dailyRedeemLimit || 60);
+  const [step, setStep] = useState(settings.redeemStep);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function guardar() {
+    setBusy(true);
+    setMsg("");
+    try {
+      await updateSettings({
+        weeklyLimit: Math.max(1, Math.floor(weekly) || 1),
+        dailyRedeemLimit: dailyOn ? Math.max(1, Math.floor(daily) || 1) : 0,
+        redeemStep: Math.max(1, Math.floor(step) || 1),
+      });
+      setMsg("Ajustes guardados.");
+    } catch {
+      setMsg("No se han podido guardar los ajustes. Revisa los valores.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const field = "w-32 rounded-2xl border-4 border-ink/15 bg-background px-3 py-2 text-center font-display text-2xl font-extrabold";
+
+  return (
+    <section className="max-w-2xl space-y-5 rounded-3xl border-4 border-ink/15 bg-card/95 p-6 float-card">
+      <h2 className="font-display text-2xl font-extrabold">Ajustes del barco</h2>
+
+      <label className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          <span className="block font-display text-lg font-extrabold">Doblones máximos por semana</span>
+          <span className="text-sm font-bold text-muted-foreground">Lo que se puede ganar con tareas de lunes a domingo</span>
+        </span>
+        <input type="number" min={1} max={10000} value={weekly} onChange={(e) => setWeekly(Number(e.target.value))} className={field} />
+      </label>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-3">
+          <input type="checkbox" checked={dailyOn} onChange={(e) => setDailyOn(e.target.checked)} className="size-6 accent-primary" />
+          <span>
+            <span className="block font-display text-lg font-extrabold">Límite diario de minutos de juego</span>
+            <span className="text-sm font-bold text-muted-foreground">Desactivado: sin límite diario</span>
+          </span>
+        </label>
+        <input type="number" min={1} max={1440} value={daily} disabled={!dailyOn} onChange={(e) => setDaily(Number(e.target.value))} className={`${field} disabled:opacity-40`} aria-label="Minutos diarios" />
+      </div>
+
+      <label className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          <span className="block font-display text-lg font-extrabold">Salto de los botones + / −</span>
+          <span className="text-sm font-bold text-muted-foreground">Doblones que suma o resta cada pulsación en el Tesoro</span>
+        </span>
+        <input type="number" min={1} max={60} value={step} onChange={(e) => setStep(Number(e.target.value))} className={field} />
+      </label>
+
+      <div className="flex items-center gap-4">
+        <Button onClick={guardar} disabled={busy} size="lg">
+          <Save className="size-5" /> {busy ? "Guardando…" : "Guardar ajustes"}
+        </Button>
+        {msg && <p className="font-bold">{msg}</p>}
+      </div>
+    </section>
   );
 }

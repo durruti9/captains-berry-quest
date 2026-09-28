@@ -1,6 +1,26 @@
 export const WEEKLY_LIMIT = 240;
 export const DAILY_REDEEM_LIMIT = 60;
 
+/** Ajustes configurables por el Rey Pirata. dailyRedeemLimit 0 = sin límite diario. */
+export type Settings = {
+  weeklyLimit: number;
+  dailyRedeemLimit: number;
+  redeemStep: number;
+};
+
+export const DEFAULT_SETTINGS: Settings = { weeklyLimit: WEEKLY_LIMIT, dailyRedeemLimit: 0, redeemStep: 5 };
+
+export function normalizeSettings(value: unknown): Settings {
+  const v = (value && typeof value === "object" ? value : {}) as Partial<Settings>;
+  const int = (n: unknown, min: number, max: number, def: number) =>
+    typeof n === "number" && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.floor(n))) : def;
+  return {
+    weeklyLimit: int(v.weeklyLimit, 1, 10000, DEFAULT_SETTINGS.weeklyLimit),
+    dailyRedeemLimit: int(v.dailyRedeemLimit, 0, 1440, DEFAULT_SETTINGS.dailyRedeemLimit),
+    redeemStep: int(v.redeemStep, 1, 60, DEFAULT_SETTINGS.redeemStep),
+  };
+}
+
 export type DayBlock = "manana" | "tarde" | "noche";
 
 export type Task = {
@@ -45,6 +65,7 @@ export type PublicData = {
   kids: Kid[];
   tasks: Task[];
   progress: Record<string, KidProgress>;
+  settings: Settings;
   storage: "persistent" | "temporary";
 };
 
@@ -262,5 +283,5 @@ export function weekFulfilled(p: KidProgress, stats: { pct: number }, weekKey: s
 }
 
 export function emptyData(): PublicData {
-  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {}, storage: "temporary" };
+  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {}, settings: DEFAULT_SETTINGS, storage: "temporary" };
 }

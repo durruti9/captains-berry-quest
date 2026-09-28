@@ -2,8 +2,11 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
+  DEFAULT_SETTINGS,
   DEFAULT_TASKS,
+  normalizeSettings,
   type Kid,
+  type Settings,
   type KidProgress,
   type Task,
 } from "./captain-shared";
@@ -13,10 +16,11 @@ export type StoredState = {
   kids: Kid[];
   tasks: Task[];
   progress: Record<string, KidProgress>;
+  settings: Settings;
 };
 
 export function emptyState(): StoredState {
-  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {} };
+  return { admin: null, kids: [], tasks: DEFAULT_TASKS, progress: {}, settings: DEFAULT_SETTINGS };
 }
 
 type RuntimeStorage = {
@@ -98,6 +102,7 @@ function normalizeState(value: unknown): StoredState {
     tasks: Array.isArray(candidate.tasks) ? candidate.tasks : DEFAULT_TASKS,
     progress:
       candidate.progress && typeof candidate.progress === "object" ? candidate.progress : {},
+    settings: normalizeSettings(candidate.settings),
   };
 }
 

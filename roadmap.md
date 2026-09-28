@@ -22,3 +22,4 @@
 - [x] Evitar bloqueos del alta cuando /data no está montado y mostrar la versión desplegada
 - [x] Permitir pasar Doblones del botín acumulado al cofre semanal
 - [x] Permitir al Rey Pirata añadir o quitar Doblones del botín acumulado
+- [x] Quitar el límite diario fijo y añadir Ajustes en el panel del Rey Pirata
