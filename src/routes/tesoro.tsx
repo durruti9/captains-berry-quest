@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Gamepad2, Minus, Plus } from "lucide-react";
+import { Coins, Gamepad2, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
 import { useCaptain, WEEKLY_LIMIT, DAILY_REDEEM_LIMIT, chestAvailable } from "@/lib/captain-store";
@@ -29,9 +30,12 @@ export const Route = createFileRoute("/tesoro")({
 });
 
 function Tesoro() {
-  const { progress, redeem, dailyRedeemRemaining } = useCaptain();
+  const { progress, redeem, transferToChest, dailyRedeemRemaining } = useCaptain();
   const [amount, setAmount] = useState(15);
+  const [transferAmount, setTransferAmount] = useState(15);
+  const [transferBusy, setTransferBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [transferFeedback, setTransferFeedback] = useState<string | null>(null);
 
   const pct = Math.min(100, (progress.weeklyEarned / WEEKLY_LIMIT) * 100);
 
@@ -44,6 +48,27 @@ function Tesoro() {
     );
     if (result.ok) setAmount(15);
     setTimeout(() => setFeedback(null), 3500);
+  }
+
+  async function rellenarCofre() {
+    const requested = Math.floor(transferAmount);
+    if (requested <= 0 || requested > progress.booty) {
+      setTransferFeedback("Elige una cantidad disponible de tu botín.");
+      return;
+    }
+    setTransferBusy(true);
+    try {
+      const result = await transferToChest(requested);
+      setTransferFeedback(
+        result.ok
+          ? `¡${requested} Doblones han vuelto a tu cofre! 🪙`
+          : (result.reason ?? "No se ha podido rellenar el cofre."),
+      );
+      if (result.ok) setTransferAmount(15);
+    } finally {
+      setTransferBusy(false);
+      setTimeout(() => setTransferFeedback(null), 3500);
+    }
   }
 
   return (
@@ -93,6 +118,71 @@ function Tesoro() {
             <p className="mt-3 font-display text-lg font-extrabold">
               Te quedan {Math.max(0, WEEKLY_LIMIT - progress.weeklyEarned)} Doblones por ganar
             </p>
+          </section>
+
+          <section className="rounded-3xl border-4 border-ink/15 bg-card/95 p-6 float-card">
+            <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold">
+              <Coins className="size-7 text-primary" /> Rellenar el cofre
+            </h2>
+            <p className="text-sm font-bold text-muted-foreground">
+              Recupera cuando quieras Doblones de tu botín. Tienes {progress.booty} guardados.
+            </p>
+
+            <div className="mt-4 flex items-center justify-center gap-4">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="Quitar 5 Doblones del traslado"
+                onClick={() => setTransferAmount((value) => Math.max(0, value - 5))}
+                disabled={progress.booty === 0 || transferBusy}
+                className="chunky size-14 rounded-2xl border-4 border-ink/15"
+              >
+                <Minus className="size-7" strokeWidth={3} />
+              </Button>
+              <input
+                type="number"
+                min={0}
+                max={progress.booty}
+                step={1}
+                aria-label="Doblones del botín para pasar al cofre"
+                value={transferAmount}
+                onChange={(event) =>
+                  setTransferAmount(Math.min(progress.booty, Math.max(0, Number(event.target.value) || 0)))
+                }
+                disabled={progress.booty === 0 || transferBusy}
+                className="w-36 rounded-2xl border-4 border-ink/15 bg-background py-3 text-center font-display text-4xl font-extrabold disabled:opacity-50"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="Añadir 5 Doblones al traslado"
+                onClick={() =>
+                  setTransferAmount((value) => Math.min(progress.booty, value + 5))
+                }
+                disabled={progress.booty === 0 || transferBusy}
+                className="chunky size-14 rounded-2xl border-4 border-ink/15"
+              >
+                <Plus className="size-7" strokeWidth={3} />
+              </Button>
+            </div>
+
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => void rellenarCofre()}
+              disabled={progress.booty === 0 || transferAmount <= 0 || transferBusy}
+              className="chunky mt-5 h-auto w-full rounded-2xl border-4 border-ink/20 py-4 font-display text-xl font-extrabold"
+            >
+              {progress.booty === 0 ? "Tu botín está vacío" : "Pasar al cofre"}
+            </Button>
+
+            {transferFeedback && (
+              <p className="mt-3 rounded-2xl bg-secondary p-3 text-center font-display text-lg font-extrabold">
+                {transferFeedback}
+              </p>
+            )}
           </section>
 
           <section className="rounded-3xl border-4 border-ink/15 bg-card/95 p-6 float-card">

@@ -73,6 +73,7 @@ type Ctx = {
   // kid actions
   toggleTask: (taskId: string) => Promise<"earned" | "undone" | "limit">;
   redeem: (amount: number) => Promise<{ ok: boolean; reason?: string | undefined }>;
+  transferToChest: (amount: number) => Promise<{ ok: boolean; reason?: string | undefined }>;
   // admin: mapa del tesoro
   setWeekApproval: (
     kidId: string,
@@ -276,6 +277,15 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     [applySnapshot],
   );
 
+  const transferToChest = useCallback(
+    async (amount: number) => {
+      const res = await api.transferToChest({ data: { amount } });
+      applySnapshot(res);
+      return { ok: res.ok, reason: res.reason };
+    },
+    [applySnapshot],
+  );
+
   const setWeekApproval = useCallback(
     async (kidId: string, weekKey: string, extraTasks: string | null) => {
       applySnapshot(await api.setWeekApproval({ data: { kidId, weekKey, extraTasks } }));
@@ -318,6 +328,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       removeTask,
       toggleTask,
       redeem,
+      transferToChest,
       setDayTask,
       setWeekApproval,
     }),
@@ -343,6 +354,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       removeTask,
       toggleTask,
       redeem,
+      transferToChest,
       setDayTask,
       setWeekApproval,
     ],

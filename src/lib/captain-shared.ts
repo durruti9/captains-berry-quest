@@ -20,6 +20,7 @@ export type Kid = {
 export type KidProgress = {
   booty: number; // botín acumulado (no se resetea)
   weeklyEarned: number; // Doblones ganados esta semana (lunes a domingo)
+  bootyTransferred: number; // Doblones del botín trasladados al cofre esta semana
   redeemedWeek: number; // Doblones canjeados esta semana
   weekKey: string;
   dayKey: string;
@@ -33,7 +34,7 @@ export type KidProgress = {
 
 /** Doblones disponibles esta semana en el cofre. */
 export function chestAvailable(p: KidProgress) {
-  return Math.max(0, p.weeklyEarned - p.redeemedWeek);
+  return Math.max(0, p.weeklyEarned + (p.bootyTransferred ?? 0) - p.redeemedWeek);
 }
 
 export type Session = { kind: "admin" } | { kind: "kid"; kidId: string } | null;
@@ -96,6 +97,7 @@ export function newProgress(): KidProgress {
   return {
     booty: 0,
     weeklyEarned: 0,
+    bootyTransferred: 0,
     redeemedWeek: 0,
     weekKey: weekKey(),
     dayKey: todayKey(),
@@ -112,6 +114,7 @@ export function refreshProgress(p: KidProgress & { balance?: number; mapStamps?:
   let next: KidProgress = {
     ...p,
     booty: p.booty ?? p.balance ?? 0,
+    bootyTransferred: p.bootyTransferred ?? 0,
     redeemedWeek: p.redeemedWeek ?? 0,
     mapApprovals: p.mapApprovals ?? {},
     history: p.history ?? {},
@@ -125,6 +128,7 @@ export function refreshProgress(p: KidProgress & { balance?: number; mapStamps?:
       weekKey: weekKey(),
       booty: next.booty + chestAvailable(next),
       weeklyEarned: 0,
+      bootyTransferred: 0,
       redeemedWeek: 0,
     };
   }
