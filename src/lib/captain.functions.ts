@@ -250,6 +250,32 @@ export const resetKidProgress = createServerFn({ method: "POST" })
     return snapshotFrom(state, { kind: "admin" });
   });
 
+/** Permite al Rey Pirata corregir el botín acumulado sin alterar el cofre semanal. */
+export const adjustKidBooty = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z
+      .object({
+        kidId: z.string().trim().min(1).max(100),
+        amount: z.number().int().min(-1_000_000).max(1_000_000).refine((value) => value !== 0),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      if (!s.kids.some((kid) => kid.id === data.kidId)) {
+        throw new Error("No se ha encontrado el grumete.");
+      }
+      const progress = refreshProgress(s.progress[data.kidId] ?? newProgress());
+      if (progress.booty + data.amount < 0) {
+        throw new Error("No puedes quitar más Doblones de los que hay en el botín.");
+      }
+      s.progress[data.kidId] = { ...progress, booty: progress.booty + data.amount };
+    });
+    return snapshotFrom(state, { kind: "admin" });
+  });
+
 /* --------------------------- admin: tasks -------------------------- */
 
 type TaskInput = { label: string; value: number; icon: string; block: DayBlock };

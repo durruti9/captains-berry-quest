@@ -21,3 +21,4 @@
 - [x] Sustituir PostgreSQL por un volumen persistente sencillo en Easypanel
 - [x] Evitar bloqueos del alta cuando /data no está montado y mostrar la versión desplegada
 - [x] Permitir pasar Doblones del botín acumulado al cofre semanal
+- [x] Permitir al Rey Pirata añadir o quitar Doblones del botín acumulado
