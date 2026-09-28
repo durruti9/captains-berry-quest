@@ -20,3 +20,4 @@
 - [x] Añadir una mejora de gamificación centrada en la constancia diaria
 - [x] Sustituir PostgreSQL por un volumen persistente sencillo en Easypanel
 - [x] Evitar bloqueos del alta cuando /data no está montado y mostrar la versión desplegada
+- [x] Permitir pasar Doblones del botín acumulado al cofre semanal

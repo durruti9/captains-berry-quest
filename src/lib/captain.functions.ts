@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestProtocol, useSession } from "@tanstack/react-start/server";
+import { z } from "zod";
 
 import {
   DAILY_REDEEM_LIMIT,
@@ -346,10 +347,11 @@ export const toggleTask = createServerFn({ method: "POST" })
       }
       if (p.tasksDone.includes(task.id)) {
         result = "undone";
+        const minimumEarned = Math.max(0, p.redeemedWeek - p.bootyTransferred);
         s.progress[kidId] = {
           ...p,
           tasksDone: p.tasksDone.filter((t) => t !== task.id),
-          weeklyEarned: Math.max(p.redeemedWeek, p.weeklyEarned - task.value),
+          weeklyEarned: Math.max(minimumEarned, p.weeklyEarned - task.value),
         };
         return;
       }
@@ -408,6 +410,35 @@ export const redeem = createServerFn({ method: "POST" })
     return { ok, reason, ...snapshotFrom(state, { kind: "kid", kidId }) };
   });
 
+const transferToChestSchema = z.object({
+  amount: z.number().int().positive().max(1_000_000),
+});
+
+/** Mueve Doblones ahorrados al cofre semanal sin crear saldo nuevo. */
+export const transferToChest = createServerFn({ method: "POST" })
+  .validator((data: unknown) => transferToChestSchema.parse(data))
+  .handler(async ({ data }) => {
+    const kidId = await requireKid();
+    const { mutateState } = await import("./captain-db.server");
+    let ok = true;
+    let reason: string | undefined;
+    const { state } = await mutateState((s) => {
+      const p = progressOf(s, kidId);
+      if (data.amount > p.booty) {
+        ok = false;
+        reason = "No tienes tantos Doblones guardados en tu botín.";
+        s.progress[kidId] = p;
+        return;
+      }
+      s.progress[kidId] = {
+        ...p,
+        booty: p.booty - data.amount,
+        bootyTransferred: p.bootyTransferred + data.amount,
+      };
+    });
+    return { ok, reason, ...snapshotFrom(state, { kind: "kid", kidId }) };
+  });
+
 /** El Rey Pirata marca/desmarca una tarea de un día pasado y ajusta los Doblones. */
 export const setDayTask = createServerFn({ method: "POST" })
   .validator((data: { kidId: string; day: string; taskId: string; done: boolean }) => data)
@@ -434,7 +465,8 @@ export const setDayTask = createServerFn({ method: "POST" })
         if (sameWeek) next.weeklyEarned = Math.min(WEEKLY_LIMIT, p.weeklyEarned + task.value);
         else next.booty = p.booty + task.value;
       } else if (sameWeek) {
-        next.weeklyEarned = Math.max(p.redeemedWeek, p.weeklyEarned - task.value);
+        const minimumEarned = Math.max(0, p.redeemedWeek - p.bootyTransferred);
+        next.weeklyEarned = Math.max(minimumEarned, p.weeklyEarned - task.value);
       } else {
         next.booty = Math.max(0, p.booty - task.value);
       }
