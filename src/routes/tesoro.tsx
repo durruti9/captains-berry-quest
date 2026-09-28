@@ -4,7 +4,7 @@ import { Coins, Gamepad2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PirateShell } from "@/components/PirateShell";
 import { KidGuard } from "@/components/KidGuard";
-import { useCaptain, WEEKLY_LIMIT, DAILY_REDEEM_LIMIT, chestAvailable } from "@/lib/captain-store";
+import { useCaptain, chestAvailable } from "@/lib/captain-store";
 
 export const Route = createFileRoute("/tesoro")({
   head: () => ({
@@ -30,7 +30,10 @@ export const Route = createFileRoute("/tesoro")({
 });
 
 function Tesoro() {
-  const { progress, redeem, transferToChest, dailyRedeemRemaining } = useCaptain();
+  const { progress, redeem, transferToChest, dailyRedeemRemaining, settings } = useCaptain();
+  const WEEKLY_LIMIT = settings.weeklyLimit;
+  const step = settings.redeemStep;
+  const maxRedeem = Math.min(chestAvailable(progress), dailyRedeemRemaining);
   const [amount, setAmount] = useState(15);
   const [transferAmount, setTransferAmount] = useState(15);
   const [transferBusy, setTransferBusy] = useState(false);
@@ -190,14 +193,16 @@ function Tesoro() {
               <Gamepad2 className="size-7 text-primary" /> Ceder Doblones a la Marina
             </h2>
             <p className="text-sm font-bold text-muted-foreground">
-              Hoy te quedan {dailyRedeemRemaining} de los {DAILY_REDEEM_LIMIT} minutos diarios
+              {settings.dailyRedeemLimit > 0
+                ? `Hoy te quedan ${dailyRedeemRemaining} de los ${settings.dailyRedeemLimit} minutos diarios`
+                : "Puedes canjear los Doblones que tengas en el cofre"}
             </p>
 
             <div className="mt-4 flex items-center justify-center gap-4">
               <button
                 type="button"
-                aria-label="Quitar 5 Doblones"
-                onClick={() => setAmount((a) => Math.max(0, a - 5))}
+                aria-label={`Quitar ${step} Doblones`}
+                onClick={() => setAmount((a) => Math.max(0, a - step))}
                 className="chunky flex size-14 items-center justify-center rounded-2xl border-4 border-ink/15 bg-secondary"
               >
                 <Minus className="size-7" strokeWidth={3} />
@@ -205,15 +210,15 @@ function Tesoro() {
               <input
                 type="number"
                 min={0}
-                max={DAILY_REDEEM_LIMIT}
+                max={maxRedeem}
                 value={amount}
                 onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
                 className="w-36 rounded-2xl border-4 border-ink/15 bg-background py-3 text-center font-display text-4xl font-extrabold"
               />
               <button
                 type="button"
-                aria-label="Añadir 5 Doblones"
-                onClick={() => setAmount((a) => Math.min(DAILY_REDEEM_LIMIT, a + 5))}
+                aria-label={`Añadir ${step} Doblones`}
+                onClick={() => setAmount((a) => Math.min(maxRedeem, a + step))}
                 className="chunky flex size-14 items-center justify-center rounded-2xl border-4 border-ink/15 bg-secondary"
               >
                 <Plus className="size-7" strokeWidth={3} />
