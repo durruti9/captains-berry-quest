@@ -3,9 +3,8 @@ import { getRequestProtocol, useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import {
-  DAILY_REDEEM_LIMIT,
-  WEEKLY_LIMIT,
   chestAvailable,
+  normalizeSettings,
   doneOnDay,
   newProgress,
   refreshProgress,
@@ -66,6 +65,7 @@ function toPublic(state: import("./captain-db.server").StoredState): PublicData 
     kids: state.kids,
     tasks: state.tasks,
     progress,
+    settings: normalizeSettings(state.settings),
     storage: runtime.__captainFileStorageV2?.location?.mode ?? "temporary",
   };
 }
@@ -276,6 +276,25 @@ export const adjustKidBooty = createServerFn({ method: "POST" })
     return snapshotFrom(state, { kind: "admin" });
   });
 
+export const updateSettings = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z
+      .object({
+        weeklyLimit: z.number().int().min(1).max(10000),
+        dailyRedeemLimit: z.number().int().min(0).max(1440),
+        redeemStep: z.number().int().min(1).max(60),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { mutateState } = await import("./captain-db.server");
+    const { state } = await mutateState((s) => {
+      s.settings = data;
+    });
+    return snapshotFrom(state, { kind: "admin" });
+  });
+
 /* --------------------------- admin: tasks -------------------------- */
 
 type TaskInput = { label: string; value: number; icon: string; block: DayBlock };
@@ -381,7 +400,7 @@ export const toggleTask = createServerFn({ method: "POST" })
         };
         return;
       }
-      const granted = Math.min(task.value, WEEKLY_LIMIT - p.weeklyEarned);
+      const granted = Math.min(task.value, s.settings.weeklyLimit - p.weeklyEarned);
       if (granted <= 0) {
         result = "limit";
         s.progress[kidId] = { ...p, tasksDone: [...p.tasksDone, task.id] };
@@ -418,13 +437,14 @@ export const redeem = createServerFn({ method: "POST" })
         reason = "No tienes suficientes Doblones en el cofre de esta semana. ¡A por más tareas!";
         return;
       }
-      const remaining = Math.max(0, DAILY_REDEEM_LIMIT - p.redeemedToday);
+      const dailyLimit = s.settings.dailyRedeemLimit;
+      const remaining = dailyLimit > 0 ? Math.max(0, dailyLimit - p.redeemedToday) : Infinity;
       if (amount > remaining) {
         ok = false;
         reason =
           remaining === 0
-            ? "¡Ya has canjeado tu hora de juego de hoy! Vuelve mañana, grumete. ⏰"
-            : `Máximo 1 hora al día: hoy solo te quedan ${remaining} minutos por canjear.`;
+            ? "¡Ya has canjeado tus minutos de juego de hoy! Vuelve mañana, grumete. ⏰"
+            : `Hoy solo te quedan ${remaining} minutos por canjear.`;
         return;
       }
       s.progress[kidId] = {
@@ -488,7 +508,7 @@ export const setDayTask = createServerFn({ method: "POST" })
       const sameWeek = weekKeyOfDay(data.day) === p.weekKey;
       const next: KidProgress = { ...p, history };
       if (data.done) {
-        if (sameWeek) next.weeklyEarned = Math.min(WEEKLY_LIMIT, p.weeklyEarned + task.value);
+        if (sameWeek) next.weeklyEarned = Math.min(s.settings.weeklyLimit, p.weeklyEarned + task.value);
         else next.booty = p.booty + task.value;
       } else if (sameWeek) {
         const minimumEarned = Math.max(0, p.redeemedWeek - p.bootyTransferred);
