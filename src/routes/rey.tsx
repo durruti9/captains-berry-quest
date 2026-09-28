@@ -20,6 +20,8 @@ import {
   RotateCcw,
   ChevronUp,
   ChevronDown,
+  Coins,
+  Minus,
 } from "lucide-react";
 import { useCaptain, BLOCK_LABELS, type DayBlock, type Task } from "@/lib/captain-store";
 import {
@@ -167,15 +169,22 @@ function ReyPirata() {
 }
 
 function Grumetes() {
-  const { kids, addKid, removeKid, updateKid, resetKidProgress } = useCaptain();
+  const { kids, data, addKid, removeKid, updateKid, resetKidProgress, adjustKidBooty } = useCaptain();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(AVATARS[0]!);
   const [resetKidId, setResetKidId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [resetError, setResetError] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [bootyKidId, setBootyKidId] = useState<string | null>(null);
+  const [bootyAmount, setBootyAmount] = useState(5);
+  const [bootyMode, setBootyMode] = useState<"add" | "remove">("add");
+  const [bootyError, setBootyError] = useState("");
+  const [savingBooty, setSavingBooty] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const resetKid = kids.find((kid) => kid.id === resetKidId);
+  const bootyKid = kids.find((kid) => kid.id === bootyKidId);
+  const currentBooty = bootyKidId ? (data.progress[bootyKidId]?.booty ?? 0) : 0;
 
   function pickFile(file: File | undefined, apply: (value: string) => void) {
     if (!file) return;
@@ -264,6 +273,21 @@ function Grumetes() {
                 onChange={(e) => void updateKid(kid.id, { name: e.target.value })}
                 className="flex-1 rounded-xl border-4 border-transparent bg-transparent px-2 py-1 font-display text-xl font-extrabold focus:border-ink/15 focus:bg-card"
               />
+              <Button
+                type="button"
+                variant="outline"
+                aria-label={`Modificar botín de ${kid.name}`}
+                title="Modificar botín acumulado"
+                onClick={() => {
+                  setBootyKidId(kid.id);
+                  setBootyAmount(5);
+                  setBootyMode("add");
+                  setBootyError("");
+                }}
+                className="h-auto rounded-xl border-4 border-ink/15 bg-card p-2 text-gold-foreground"
+              >
+                <Coins className="size-6" />
+              </Button>
               <button
                 type="button"
                 aria-label={`Reiniciar progreso de ${kid.name}`}
@@ -291,6 +315,95 @@ function Grumetes() {
           )}
         </ul>
       </section>
+
+      {bootyKid && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="adjust-booty-title"
+        >
+          <section className="w-full max-w-lg rounded-3xl border-4 border-ink/20 bg-card p-6 float-card">
+            <div className="flex items-center gap-3">
+              <Coins className="size-9 text-gold-foreground" />
+              <div>
+                <h2 id="adjust-booty-title" className="font-display text-2xl font-extrabold">
+                  Botín de {bootyKid.name}
+                </h2>
+                <p className="font-bold text-muted-foreground">Ahora tiene {currentBooty} Doblones acumulados</p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={bootyMode === "add" ? "default" : "outline"}
+                onClick={() => { setBootyMode("add"); setBootyError(""); }}
+                className="h-auto rounded-2xl border-4 border-ink/15 py-3 font-display text-lg font-extrabold"
+              >
+                <Plus className="size-5" /> Añadir
+              </Button>
+              <Button
+                type="button"
+                variant={bootyMode === "remove" ? "destructive" : "outline"}
+                onClick={() => { setBootyMode("remove"); setBootyError(""); }}
+                className="h-auto rounded-2xl border-4 border-ink/15 py-3 font-display text-lg font-extrabold"
+              >
+                <Minus className="size-5" /> Quitar
+              </Button>
+            </div>
+            <label htmlFor="booty-amount" className="mt-5 block font-display font-extrabold">
+              Cantidad de Doblones
+            </label>
+            <input
+              id="booty-amount"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={bootyMode === "remove" ? Math.max(1, currentBooty) : 1000000}
+              value={bootyAmount}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setBootyAmount(Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0);
+                setBootyError("");
+              }}
+              className="mt-2 w-full rounded-2xl border-4 border-ink/15 bg-background px-4 py-3 text-center font-display text-2xl font-extrabold"
+            />
+            {bootyError && <p className="mt-2 font-bold text-destructive">{bootyError}</p>}
+            <div className="mt-5 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={savingBooty}
+                onClick={() => setBootyKidId(null)}
+                className="h-auto rounded-2xl border-4 border-ink/15 px-5 py-3 font-display text-lg font-extrabold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant={bootyMode === "remove" ? "destructive" : "default"}
+                disabled={savingBooty || bootyAmount < 1 || (bootyMode === "remove" && bootyAmount > currentBooty)}
+                onClick={async () => {
+                  setSavingBooty(true);
+                  setBootyError("");
+                  try {
+                    await adjustKidBooty(bootyKid.id, bootyMode === "add" ? bootyAmount : -bootyAmount);
+                    setBootyKidId(null);
+                  } catch (error) {
+                    setBootyError(error instanceof Error ? error.message : "No se pudo modificar el botín.");
+                  } finally {
+                    setSavingBooty(false);
+                  }
+                }}
+                className="h-auto rounded-2xl border-4 border-ink/20 px-5 py-3 font-display text-lg font-extrabold"
+              >
+                {bootyMode === "add" ? <Plus className="size-5" /> : <Minus className="size-5" />}
+                {savingBooty ? "Guardando…" : bootyMode === "add" ? "Añadir Doblones" : "Quitar Doblones"}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {resetKid && (
         <div

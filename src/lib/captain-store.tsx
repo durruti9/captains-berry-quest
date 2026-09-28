@@ -66,6 +66,7 @@ type Ctx = {
   updateKid: (id: string, patch: Partial<Omit<Kid, "id">>) => Promise<void>;
   removeKid: (id: string) => Promise<void>;
   resetKidProgress: (kidId: string, confirmation: string) => Promise<void>;
+  adjustKidBooty: (kidId: string, amount: number) => Promise<void>;
   addTask: (task: Omit<Task, "id">) => Promise<void>;
   updateTask: (id: string, patch: Partial<Omit<Task, "id">>) => Promise<void>;
   moveTask: (id: string, direction: "up" | "down") => Promise<void>;
@@ -286,6 +287,13 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
     [applySnapshot],
   );
 
+  const adjustKidBooty = useCallback(
+    async (kidId: string, amount: number) => {
+      applySnapshot(await api.adjustKidBooty({ data: { kidId, amount } }));
+    },
+    [applySnapshot],
+  );
+
   const setWeekApproval = useCallback(
     async (kidId: string, weekKey: string, extraTasks: string | null) => {
       applySnapshot(await api.setWeekApproval({ data: { kidId, weekKey, extraTasks } }));
@@ -322,6 +330,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       updateKid,
       removeKid,
       resetKidProgress,
+      adjustKidBooty,
       addTask,
       updateTask,
       moveTask,
@@ -348,6 +357,7 @@ export function CaptainProvider({ children }: { children: ReactNode }) {
       updateKid,
       removeKid,
       resetKidProgress,
+      adjustKidBooty,
       addTask,
       updateTask,
       moveTask,

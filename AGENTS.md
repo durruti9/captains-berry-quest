@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Track Doblones moved from accumulated booty separately from weekly earnings, so transfers never consume the weekly earning cap.
+- Los ajustes manuales del botín solo pueden ejecutarse en el servidor por una sesión de Rey Pirata, con cantidades enteras validadas y sin permitir saldo negativo, para proteger el progreso del grumete.
